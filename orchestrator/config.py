@@ -14,5 +14,9 @@ class Settings(BaseSettings):
     generation_model: str = "claude-haiku-4-5-20251001"
     classifier_model: str = "claude-haiku-4-5-20251001"
 
+    # Redis (Upstash)
+    upstash_redis_rest_url: str = ""
+    upstash_redis_rest_token: str = ""
+
 
 settings = Settings()
