@@ -9,16 +9,10 @@ from fastapi.responses import StreamingResponse
 
 from orchestrator.config import settings
 from orchestrator.models.vapi import VapiRequest
+from orchestrator.services.prompt_composer import render_system_prompt
+from packs.pack_loader import load_pack
 
 router = APIRouter()
-
-# Replaced in step 6 with pack-composed prompt
-_HARDCODED_SYSTEM = (
-    "You are a professional cold-calling AI agent named Alex. "
-    "Be warm, concise, and natural — never robotic. "
-    "Keep every reply under 40 words. "
-    "Your goal is to book a 15-minute discovery call."
-)
 
 
 async def _stream_openai_sse(
@@ -33,14 +27,13 @@ async def _stream_openai_sse(
     chunk_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
     created = int(time.time())
 
-    # Opening chunk — role delta
     yield _sse(chunk_id, created, {"role": "assistant"}, finish_reason=None)
 
     async with client.messages.stream(
         model=settings.generation_model,
         system=system,
         messages=messages,  # type: ignore[arg-type]
-        max_tokens=settings.max_tokens if hasattr(settings, "max_tokens") else 256,
+        max_tokens=256,
     ) as stream:
         async for text in stream.text_stream:
             yield _sse(chunk_id, created, {"content": text}, finish_reason=None)
@@ -73,7 +66,9 @@ def _sse(
 
 @router.post("/vapi/llm")
 async def vapi_llm(request: VapiRequest) -> StreamingResponse:
-    # Strip injected system messages — we own the system prompt
+    pack = load_pack(settings.active_pack)
+    system = render_system_prompt(pack)
+
     messages = [
         {"role": m.role, "content": m.content}
         for m in request.messages
@@ -84,7 +79,7 @@ async def vapi_llm(request: VapiRequest) -> StreamingResponse:
         raise HTTPException(status_code=422, detail="messages must contain at least one user turn")
 
     return StreamingResponse(
-        _stream_openai_sse(messages, _HARDCODED_SYSTEM),
+        _stream_openai_sse(messages, system),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
