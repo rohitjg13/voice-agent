@@ -12,6 +12,7 @@ from orchestrator.models.call_state import Intent
 from orchestrator.models.vapi import VapiRequest
 from orchestrator.services.call_state_store import get_or_create_call_state, save_call_state
 from orchestrator.services.intent_classifier import classify_intent
+from orchestrator.services.objection_handler import handle_objection
 from orchestrator.services.prompt_composer import render_stage_instruction, render_system_prompt
 from orchestrator.services.state_machine import transition
 from packs.pack_loader import load_pack
@@ -85,8 +86,15 @@ async def vapi_llm(request: VapiRequest) -> StreamingResponse:
     call_state = transition(call_state, intent, objection_id=objection_id)
     await save_call_state(call_id, call_state)
 
+    # ── Objection context (only when in OBJECTION stage) ─────────────────────
+    objection_ctx = None
+    if call_state.stage.value == "OBJECTION":
+        objection_ctx = await handle_objection(pack, call_state, last_user_msg or "")
+
     # ── Compose system prompt ─────────────────────────────────────────────────
-    system = render_system_prompt(pack) + "\n\n" + render_stage_instruction(pack, call_state)
+    system = render_system_prompt(pack) + "\n\n" + render_stage_instruction(
+        pack, call_state, objection_ctx=objection_ctx
+    )
 
     messages = [
         {"role": m.role, "content": m.content}

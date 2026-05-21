@@ -37,3 +37,5 @@ class CallState(BaseModel):
     asked_question_indices: list[int] = Field(default_factory=list)
     # Where to return after an objection is handled
     pre_objection_stage: ConversationState = ConversationState.PITCH
+    # Set by FSM when entering OBJECTION; used by objection handler
+    current_objection_id: str = "none"

@@ -62,6 +62,10 @@ def transition(
         case ConversationState.END:
             pass  # terminal — no transitions
 
+    # Stamp the objection id whenever we land in OBJECTION
+    if s.stage == ConversationState.OBJECTION:
+        s.current_objection_id = objection_id
+
     return s
 
 

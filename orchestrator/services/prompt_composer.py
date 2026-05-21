@@ -1,7 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from jinja2 import Environment, StrictUndefined, TemplateError
 
 from orchestrator.models.call_state import CallState, ConversationState
 from packs._schema.pack import IndustryPack
+
+if TYPE_CHECKING:
+    from orchestrator.services.objection_handler import ObjectionContext
 
 _env = Environment(
     undefined=StrictUndefined,
@@ -23,7 +30,11 @@ def render_system_prompt(pack: IndustryPack) -> str:
         raise ValueError(f"Failed to render system prompt for pack '{pack.name}': {exc}") from exc
 
 
-def render_stage_instruction(pack: IndustryPack, state: CallState) -> str:
+def render_stage_instruction(
+    pack: IndustryPack,
+    state: CallState,
+    objection_ctx: ObjectionContext | None = None,
+) -> str:
     """Return a short stage-specific instruction appended to the system prompt."""
     stage = state.stage
     s = pack.stages
@@ -62,6 +73,19 @@ def render_stage_instruction(pack: IndustryPack, state: CallState) -> str:
                 f"Keep it conversational — one benefit per turn."
             )
         case ConversationState.OBJECTION:
+            if objection_ctx:
+                retrieval_section = (
+                    f"\nSupporting context from knowledge base:\n{objection_ctx.retrieved_context}"
+                    if objection_ctx.retrieved_context
+                    else ""
+                )
+                return (
+                    f"[STAGE: OBJECTION — {objection_ctx.label} "
+                    f"(strike {objection_ctx.strike_count}/{objection_ctx.max_strikes})]\n"
+                    f"Suggested response (adapt naturally, don't read verbatim):\n"
+                    f"\"{objection_ctx.suggested_response}\""
+                    f"{retrieval_section}"
+                )
             return (
                 "[STAGE: OBJECTION]\n"
                 "Acknowledge the prospect's concern empathetically, then offer a "

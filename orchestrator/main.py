@@ -1,11 +1,23 @@
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
 import structlog
 from fastapi import FastAPI
 
+from orchestrator import db
 from orchestrator.routers import vapi
 
 logger = structlog.get_logger()
 
-app = FastAPI(title="Voice Agent Platform", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    await db.init_pool()
+    yield
+    await db.close_pool()
+
+
+app = FastAPI(title="Voice Agent Platform", version="0.1.0", lifespan=lifespan)
 
 app.include_router(vapi.router)
 

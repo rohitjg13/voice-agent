@@ -18,5 +18,12 @@ class Settings(BaseSettings):
     upstash_redis_rest_url: str = ""
     upstash_redis_rest_token: str = ""
 
+    # Postgres (Supabase / asyncpg — use postgresql:// not postgresql+asyncpg://)
+    database_url: str = ""
+
+    # RAG
+    embedding_model: str = "text-embedding-3-small"
+    rag_top_k: int = 3
+
 
 settings = Settings()
