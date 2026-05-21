@@ -39,3 +39,6 @@ class CallState(BaseModel):
     pre_objection_stage: ConversationState = ConversationState.PITCH
     # Set by FSM when entering OBJECTION; used by objection handler
     current_objection_id: str = "none"
+    # Compliance
+    disclosure_given: bool = False
+    compliance_violations: list[str] = Field(default_factory=list)
