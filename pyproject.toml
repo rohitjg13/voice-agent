@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "voice-agent-platform"
@@ -40,6 +40,9 @@ dev = [
     "types-pyyaml>=6.0.12",
     "httpx>=0.27.0",
 ]
+
+[tool.setuptools.packages.find]
+include = ["orchestrator*", "packs*", "simulator*"]
 
 [tool.ruff]
 target-version = "py311"
