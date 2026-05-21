@@ -11,6 +11,7 @@ from orchestrator.config import settings
 from orchestrator.models.call_state import Intent
 from orchestrator.models.vapi import VapiRequest
 from orchestrator.services.call_state_store import get_or_create_call_state, save_call_state
+from orchestrator.services.intent_classifier import classify_intent
 from orchestrator.services.prompt_composer import render_stage_instruction, render_system_prompt
 from orchestrator.services.state_machine import transition
 from packs.pack_loader import load_pack
@@ -70,11 +71,18 @@ async def vapi_llm(request: VapiRequest) -> StreamingResponse:
     # Fetch or initialise per-call state
     call_state = await get_or_create_call_state(call_id, pack.name)
 
-    # ── Intent classification (placeholder — replaced in step 8) ──────────────
-    intent = Intent.NEUTRAL
+    # ── Intent classification ─────────────────────────────────────────────────
+    last_user_msg = next(
+        (m.content for m in reversed(request.messages) if m.role == "user"),
+        None,
+    )
+    if last_user_msg:
+        intent, objection_id = await classify_intent(last_user_msg, pack)
+    else:
+        intent, objection_id = Intent.NEUTRAL, "none"
 
     # ── State transition ──────────────────────────────────────────────────────
-    call_state = transition(call_state, intent)
+    call_state = transition(call_state, intent, objection_id=objection_id)
     await save_call_state(call_id, call_state)
 
     # ── Compose system prompt ─────────────────────────────────────────────────
