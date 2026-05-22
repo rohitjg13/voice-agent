@@ -88,7 +88,10 @@ async def classify_intent(
     valid_ids = {o.id for o in pack.objections} | {"other", "generic", "none"}
 
     try:
-        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+        client = anthropic.AsyncAnthropic(
+            api_key=settings.anthropic_api_key,
+            max_retries=4,
+        )
         response = await client.messages.create(
             model=settings.classifier_model,
             max_tokens=20,

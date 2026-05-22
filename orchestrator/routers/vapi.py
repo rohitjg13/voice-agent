@@ -43,7 +43,10 @@ async def _stream_anthropic_text(
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
 
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = anthropic.AsyncAnthropic(
+        api_key=settings.anthropic_api_key,
+        max_retries=4,  # 2 by default; overloaded_error transient under voice load
+    )
     async with client.messages.stream(
         model=settings.generation_model,
         system=system,
