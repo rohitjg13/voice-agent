@@ -10,9 +10,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     environment: str = "development"
 
-    # Model routing
-    generation_model: str = "claude-haiku-4-5-20251001"
+    # Model routing — Sonnet for response generation (instruction-following matters),
+    # Haiku for classification (one-line output, cheap)
+    generation_model: str = "claude-sonnet-4-6"
     classifier_model: str = "claude-haiku-4-5-20251001"
+    generation_temperature: float = 0.4
 
     # Redis (Upstash)
     upstash_redis_rest_url: str = ""

@@ -56,6 +56,7 @@ async def _stream_anthropic_text(
         system=system,
         messages=messages,  # type: ignore[arg-type]
         max_tokens=256,
+        temperature=settings.generation_temperature,
     ) as stream:
         async for text in stream.text_stream:
             yield text

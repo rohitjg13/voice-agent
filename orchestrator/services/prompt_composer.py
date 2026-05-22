@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
@@ -33,31 +33,37 @@ def render_system_prompt(pack: IndustryPack) -> str:
 
 
 def render_runtime_context(pack: IndustryPack) -> str:
-    """Inject current date, working days, and hallucination guards into the prompt."""
+    """Inject current date, an explicit 7-day calendar, and hallucination guards."""
     sched = pack.scheduling
     try:
         now = datetime.now(ZoneInfo(sched.timezone))
     except Exception:
         now = datetime.now()
 
-    today = now.strftime("%A, %B %d, %Y")
-    today_weekday = now.strftime("%A")
-    working_days_csv = ", ".join(sched.working_days)
-    is_working_today = today_weekday in sched.working_days
+    today_full = now.strftime("%A, %B %d, %Y")
 
-    today_line = f"Today is {today}."
-    if not is_working_today:
-        today_line += f" Note: {today_weekday} is NOT a working day — propose the next working day instead."
+    # Build an explicit 7-day calendar so the LLM doesn't do date math
+    calendar_lines = []
+    for i in range(7):
+        d = now + timedelta(days=i)
+        weekday = d.strftime("%A")
+        label = "TODAY" if i == 0 else ("Tomorrow" if i == 1 else weekday)
+        date_str = d.strftime("%B %d, %Y")
+        if weekday in sched.working_days:
+            calendar_lines.append(f"  • {label}: {weekday}, {date_str}")
+        else:
+            calendar_lines.append(f"  • {label}: {weekday}, {date_str}  ✗ NON-WORKING — do not offer")
+    calendar = "\n".join(calendar_lines)
 
     return (
         f"[RUNTIME CONTEXT]\n"
-        f"{today_line}\n"
-        f"Business hours: {sched.working_hours} ({sched.timezone}).\n"
-        f"Working days: {working_days_csv}. NEVER offer a meeting on a non-working day.\n"
-        f"When proposing times, use REAL upcoming dates (e.g. 'Monday, May 25 at 10 AM'), "
-        f"not vague references like 'Thursday' without a date.\n"
-        f"NEVER address the prospect by a name they haven't given you. If you don't know "
-        f"their name, don't use one."
+        f"Today is {today_full} ({sched.timezone}). Business hours: {sched.working_hours}.\n"
+        f"\n"
+        f"Use ONLY these upcoming dates when proposing times — never invent a weekday/date pairing:\n"
+        f"{calendar}\n"
+        f"\n"
+        f"NEVER address the prospect by a name they haven't given you. If they haven't shared their "
+        f"name, don't use one."
     )
 
 
