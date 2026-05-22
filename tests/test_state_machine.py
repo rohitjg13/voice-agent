@@ -137,8 +137,30 @@ def test_close_not_interested_ends_call():
 
 # ── SCHEDULE / END ────────────────────────────────────────────────────────────
 
-def test_schedule_any_intent_goes_to_end():
+def test_schedule_stays_until_email_and_name_collected():
+    # Missing both
     s = transition(_state(ConversationState.SCHEDULE), Intent.NEUTRAL)
+    assert s.stage == ConversationState.SCHEDULE
+
+    # Missing name
+    s = transition(
+        _state(ConversationState.SCHEDULE, collected_email="r@x.com"),
+        Intent.NEUTRAL,
+    )
+    assert s.stage == ConversationState.SCHEDULE
+
+    # Missing email
+    s = transition(
+        _state(ConversationState.SCHEDULE, collected_name="Rohit"),
+        Intent.NEUTRAL,
+    )
+    assert s.stage == ConversationState.SCHEDULE
+
+    # Both collected → END
+    s = transition(
+        _state(ConversationState.SCHEDULE, collected_email="r@x.com", collected_name="Rohit"),
+        Intent.NEUTRAL,
+    )
     assert s.stage == ConversationState.END
 
 

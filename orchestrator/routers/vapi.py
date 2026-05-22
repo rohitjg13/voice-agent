@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from orchestrator.config import settings
-from orchestrator.models.call_state import CallState, Intent
+from orchestrator.models.call_state import CallState, ConversationState, Intent
 from orchestrator.models.vapi import VapiRequest
 from orchestrator.services.appointment_extractor import extract_appointment
 from orchestrator.services.appointment_store import save_appointment
@@ -30,6 +30,7 @@ from orchestrator.services.prompt_composer import (
     render_stage_instruction,
     render_system_prompt,
 )
+from orchestrator.services.schedule_extractor import extract_schedule_info
 from orchestrator.services.state_machine import transition
 from packs._schema.pack import IndustryPack
 from packs.pack_loader import load_pack
@@ -158,11 +159,26 @@ async def vapi_llm(request: VapiRequest) -> StreamingResponse:
 
     # ── State transition ──────────────────────────────────────────────────────
     call_state = transition(call_state, intent, objection_id=objection_id)
+
+    # ── Schedule sub-state extraction ─────────────────────────────────────────
+    # When in SCHEDULE, scan the last user message for email/name and persist.
+    # FSM won't leave SCHEDULE until both are collected.
+    if call_state.stage == ConversationState.SCHEDULE and last_user_msg:
+        info = await extract_schedule_info(last_user_msg)
+        if info.get("email") and not call_state.collected_email:
+            call_state.collected_email = info["email"]
+            logger.info("schedule_email_collected", call_id=call_id, email=info["email"])
+        if info.get("name") and not call_state.collected_name:
+            call_state.collected_name = info["name"]
+            logger.info("schedule_name_collected", call_id=call_id, name=info["name"])
+        # If we just collected the last missing piece, FSM should advance to END
+        # on the NEXT turn; this turn still serves the confirm-and-close prompt.
+
     await save_call_state(call_id, call_state)
 
     # ── Objection context (only when in OBJECTION stage) ─────────────────────
     objection_ctx = None
-    if call_state.stage.value == "OBJECTION":
+    if call_state.stage == ConversationState.OBJECTION:
         objection_ctx = await handle_objection(pack, call_state, last_user_msg or "")
 
     # ── Compose system prompt ─────────────────────────────────────────────────

@@ -42,3 +42,6 @@ class CallState(BaseModel):
     # Compliance
     disclosure_given: bool = False
     compliance_violations: list[str] = Field(default_factory=list)
+    # SCHEDULE sub-state — collected one at a time before END is allowed
+    collected_email: str | None = None
+    collected_name: str | None = None

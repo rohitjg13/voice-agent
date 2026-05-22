@@ -55,7 +55,9 @@ def transition(
                 s.stage = ConversationState.END
 
         case ConversationState.SCHEDULE:
-            s.stage = ConversationState.END
+            # Stay in SCHEDULE until BOTH email and name are collected
+            if s.collected_email and s.collected_name:
+                s.stage = ConversationState.END
 
         case ConversationState.END:
             pass  # terminal — no transitions

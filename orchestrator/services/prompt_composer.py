@@ -136,19 +136,29 @@ def render_stage_instruction(
                 f"Offer two specific time options. Don't ask open-ended questions."
             )
         case ConversationState.SCHEDULE:
+            if not state.collected_email:
+                return (
+                    "[STAGE: SCHEDULE — STEP 1 of 3: ASK FOR EMAIL]\n"
+                    "Your entire next response MUST be a single short sentence asking for the "
+                    "prospect's email address for the calendar invite. Example:\n"
+                    "  \"Great. What's the best email for the calendar invite?\"\n"
+                    "Do not ask for anything else. Do not say 'I'll send the invite' yet. "
+                    "Do not invent a name."
+                )
+            if not state.collected_name:
+                return (
+                    "[STAGE: SCHEDULE — STEP 2 of 3: ASK FOR NAME]\n"
+                    f"You already have the email: {state.collected_email}.\n"
+                    "Your entire next response MUST be a single short sentence asking for the "
+                    "prospect's name. Example:\n"
+                    "  \"Got it. And what name should I put on the invite?\"\n"
+                    "Do not say 'I'll send the invite' yet. Do not infer the name from the email."
+                )
             return (
-                "[STAGE: SCHEDULE]\n"
-                "Before ending the call you MUST collect THREE things, in order:\n"
-                "  1) a concrete date + time (pick from the calendar in [RUNTIME CONTEXT])\n"
-                "  2) the prospect's EMAIL ADDRESS\n"
-                "  3) the prospect's NAME\n"
-                "\n"
-                "Rules:\n"
-                "  - Once a time is agreed, ask: \"" + s.schedule.strip() + "\"\n"
-                "  - Once the email is given, ask: \"And what's the best name to put on the invite?\"\n"
-                "  - Do NOT infer a name from the email username. Always ask explicitly.\n"
-                "  - Do NOT say 'I'll send the invite' until you have all three.\n"
-                "  - When you have all three, briefly read them back to confirm, then wrap up warmly."
+                "[STAGE: SCHEDULE — STEP 3 of 3: CONFIRM AND CLOSE]\n"
+                f"You have: name={state.collected_name}, email={state.collected_email}.\n"
+                "Briefly read these back to confirm, thank them, and end with the exact phrase: "
+                "\"Have a great day, goodbye.\""
             )
         case ConversationState.END:
             return (
