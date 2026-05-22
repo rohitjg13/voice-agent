@@ -162,3 +162,8 @@ compliance:
     - HIPAA-compliant
   required_disclosure: "This call may be recorded for quality and training purposes."
   do_not_call_check: true
+
+scheduling:
+  working_days: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]
+  working_hours: "9 AM to 6 PM"
+  timezone: "Asia/Kolkata"

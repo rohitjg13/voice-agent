@@ -37,6 +37,16 @@ class ComplianceConfig(BaseModel):
     do_not_call_check: bool = True
 
 
+class SchedulingConfig(BaseModel):
+    """When the business can take meetings. Used to constrain proposed times."""
+
+    working_days: list[str] = Field(
+        default_factory=lambda: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    )
+    working_hours: str = "9 AM to 5 PM"
+    timezone: str = "America/Chicago"
+
+
 class IndustryPack(BaseModel):
     """Top-level schema for an industry pack YAML."""
 
@@ -52,3 +62,4 @@ class IndustryPack(BaseModel):
     stages: StageScripts
     objections: list[ObjectionEntry] = Field(default_factory=list)
     compliance: ComplianceConfig = Field(default_factory=ComplianceConfig)
+    scheduling: SchedulingConfig = Field(default_factory=SchedulingConfig)

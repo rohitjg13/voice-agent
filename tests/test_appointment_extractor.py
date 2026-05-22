@@ -2,8 +2,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from orchestrator.services.appointment_extractor import _strip_fences, extract_appointment
-
+from orchestrator.services.appointment_extractor import (
+    _strip_fences,
+    extract_appointment,
+)
 
 # ── _strip_fences (pure) ─────────────────────────────────────────────────────
 

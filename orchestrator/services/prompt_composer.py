@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
 from jinja2 import Environment, StrictUndefined, TemplateError
 
@@ -28,6 +30,35 @@ def render_system_prompt(pack: IndustryPack) -> str:
         ).strip()
     except TemplateError as exc:
         raise ValueError(f"Failed to render system prompt for pack '{pack.name}': {exc}") from exc
+
+
+def render_runtime_context(pack: IndustryPack) -> str:
+    """Inject current date, working days, and hallucination guards into the prompt."""
+    sched = pack.scheduling
+    try:
+        now = datetime.now(ZoneInfo(sched.timezone))
+    except Exception:
+        now = datetime.now()
+
+    today = now.strftime("%A, %B %d, %Y")
+    today_weekday = now.strftime("%A")
+    working_days_csv = ", ".join(sched.working_days)
+    is_working_today = today_weekday in sched.working_days
+
+    today_line = f"Today is {today}."
+    if not is_working_today:
+        today_line += f" Note: {today_weekday} is NOT a working day — propose the next working day instead."
+
+    return (
+        f"[RUNTIME CONTEXT]\n"
+        f"{today_line}\n"
+        f"Business hours: {sched.working_hours} ({sched.timezone}).\n"
+        f"Working days: {working_days_csv}. NEVER offer a meeting on a non-working day.\n"
+        f"When proposing times, use REAL upcoming dates (e.g. 'Monday, May 25 at 10 AM'), "
+        f"not vague references like 'Thursday' without a date.\n"
+        f"NEVER address the prospect by a name they haven't given you. If you don't know "
+        f"their name, don't use one."
+    )
 
 
 def render_stage_instruction(
@@ -100,9 +131,16 @@ def render_stage_instruction(
             )
         case ConversationState.SCHEDULE:
             return (
-                f"[STAGE: SCHEDULE]\n"
-                f"\"{s.schedule.strip()}\"\n"
-                f"Confirm the meeting details and end on a warm, positive note."
+                "[STAGE: SCHEDULE]\n"
+                "Before you can end the call you MUST collect two things:\n"
+                "  1) a concrete day + time (use real dates, see runtime context)\n"
+                "  2) the prospect's EMAIL ADDRESS for the calendar invite\n"
+                "\n"
+                "If a time is agreed but no email has been given, your next sentence MUST ask:\n"
+                f"   \"{s.schedule.strip()}\"\n"
+                "\n"
+                "Do NOT say 'I'll send the invite' or anything similar until the email has been "
+                "spoken back by the prospect. Once you have both, confirm them out loud and wrap up warmly."
             )
         case ConversationState.END:
             return (

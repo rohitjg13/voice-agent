@@ -26,6 +26,7 @@ from orchestrator.services.compliance import (
 from orchestrator.services.intent_classifier import classify_intent
 from orchestrator.services.objection_handler import handle_objection
 from orchestrator.services.prompt_composer import (
+    render_runtime_context,
     render_stage_instruction,
     render_system_prompt,
 )
@@ -166,6 +167,7 @@ async def vapi_llm(request: VapiRequest) -> StreamingResponse:
     # ── Compose system prompt ─────────────────────────────────────────────────
     parts = [
         render_system_prompt(pack),
+        render_runtime_context(pack),
         render_stage_instruction(pack, call_state, objection_ctx=objection_ctx),
         render_compliance_directive(pack, call_state),
     ]
