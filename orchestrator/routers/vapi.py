@@ -119,6 +119,7 @@ def _make_audit_callback(
 
 
 @router.post("/vapi/llm")
+@router.post("/vapi/llm/chat/completions")  # Vapi appends /chat/completions to the base URL
 async def vapi_llm(request: VapiRequest) -> StreamingResponse:
     pack = load_pack(settings.active_pack)
 
