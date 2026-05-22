@@ -9,6 +9,7 @@ import json
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import anthropic
 import structlog
@@ -58,7 +59,7 @@ def get_persona(name: str) -> Persona:
 # ── SSE parsing ──────────────────────────────────────────────────────────────
 
 
-async def _stream_to_text(response) -> str:
+async def _stream_to_text(response: Any) -> str:
     """Collect content from an OpenAI-compatible SSE stream into a single string."""
     parts: list[str] = []
     async for line in response.aiter_lines():

@@ -27,7 +27,7 @@ async def _redis_get(key: str) -> str | None:
         url=settings.upstash_redis_rest_url,
         token=settings.upstash_redis_rest_token,
     )
-    return await client.get(key)  # type: ignore[return-value]
+    return await client.get(key)
 
 
 async def _redis_set(key: str, value: str, ttl: int) -> None:

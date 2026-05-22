@@ -3,9 +3,9 @@ Classifies the prospect's last utterance into an Intent + objection_id.
 Uses a single Claude Haiku call with a structured output format.
 """
 
+import anthropic
 import structlog
 
-import anthropic
 from orchestrator.config import settings
 from orchestrator.models.call_state import Intent
 from packs._schema.pack import IndustryPack

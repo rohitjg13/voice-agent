@@ -1,4 +1,3 @@
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -13,7 +12,6 @@ from simulator.runner import (
     load_personas,
     run_simulation,
 )
-
 
 # ── persona loading ──────────────────────────────────────────────────────────
 

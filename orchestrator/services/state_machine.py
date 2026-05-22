@@ -39,9 +39,7 @@ def transition(
             if intent == Intent.OBJECTION:
                 s.pre_objection_stage = ConversationState.PITCH
                 s.stage = ConversationState.OBJECTION
-            elif intent in (Intent.INTERESTED, Intent.AGREE):
-                s.stage = ConversationState.CLOSE
-            elif s.pitch_turns >= _PITCH_TURNS_BEFORE_CLOSE:
+            elif intent in (Intent.INTERESTED, Intent.AGREE) or s.pitch_turns >= _PITCH_TURNS_BEFORE_CLOSE:
                 s.stage = ConversationState.CLOSE
 
         case ConversationState.OBJECTION:

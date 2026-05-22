@@ -2,12 +2,8 @@ import pytest
 from pydantic import ValidationError
 
 from packs._schema.pack import (
-    AgentPersona,
-    ComplianceConfig,
     IndustryPack,
     ObjectionEntry,
-    ProductInfo,
-    StageScripts,
 )
 
 MINIMAL_VALID = {

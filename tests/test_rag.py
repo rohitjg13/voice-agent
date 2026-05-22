@@ -4,7 +4,6 @@ import pytest
 
 from orchestrator.services.rag import chunk_text, retrieve
 
-
 # ── chunk_text (pure) ─────────────────────────────────────────────────────────
 
 def test_chunk_splits_on_blank_lines():

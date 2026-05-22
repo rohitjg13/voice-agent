@@ -11,7 +11,10 @@ from fastapi.responses import StreamingResponse
 from orchestrator.config import settings
 from orchestrator.models.call_state import CallState, Intent
 from orchestrator.models.vapi import VapiRequest
-from orchestrator.services.call_state_store import get_or_create_call_state, save_call_state
+from orchestrator.services.call_state_store import (
+    get_or_create_call_state,
+    save_call_state,
+)
 from orchestrator.services.compliance import (
     audit_response,
     check_dnc,
@@ -19,7 +22,10 @@ from orchestrator.services.compliance import (
 )
 from orchestrator.services.intent_classifier import classify_intent
 from orchestrator.services.objection_handler import handle_objection
-from orchestrator.services.prompt_composer import render_stage_instruction, render_system_prompt
+from orchestrator.services.prompt_composer import (
+    render_stage_instruction,
+    render_system_prompt,
+)
 from orchestrator.services.state_machine import transition
 from packs._schema.pack import IndustryPack
 from packs.pack_loader import load_pack

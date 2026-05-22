@@ -3,7 +3,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from orchestrator.models.call_state import Intent
-from orchestrator.services.intent_classifier import _parse_classification, classify_intent
+from orchestrator.services.intent_classifier import (
+    _parse_classification,
+    classify_intent,
+)
 from packs.pack_loader import clear_cache, load_pack
 
 # ── valid objection IDs from the dental pack ──────────────────────────────────

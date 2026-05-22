@@ -1,4 +1,3 @@
-import pytest
 
 from orchestrator.models.call_state import CallState, ConversationState, Intent
 from orchestrator.services.state_machine import (
