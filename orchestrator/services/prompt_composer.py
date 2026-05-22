@@ -63,7 +63,12 @@ def render_runtime_context(pack: IndustryPack) -> str:
         f"{calendar}\n"
         f"\n"
         f"NEVER address the prospect by a name they haven't given you. If they haven't shared their "
-        f"name, don't use one."
+        f"name, don't use one.\n"
+        f"\n"
+        f"CRITICAL: NEVER say any farewell phrase ('goodbye', 'bye', 'take care', 'have a great day', "
+        f"'talk soon', etc.) unless the [STAGE] section below EXPLICITLY tells you to. Saying these "
+        f"phrases prematurely will hang up the call and lose the deal. When in doubt, keep the "
+        f"conversation going."
     )
 
 
@@ -157,15 +162,15 @@ def render_stage_instruction(
             return (
                 "[STAGE: SCHEDULE — STEP 3 of 3: CONFIRM AND CLOSE]\n"
                 f"You have: name={state.collected_name}, email={state.collected_email}.\n"
-                "Briefly read these back to confirm, thank them, and end with the exact phrase: "
-                "\"Have a great day, goodbye.\""
+                "Briefly read these back to confirm, thank them, and end with the EXACT phrase "
+                "(this triggers call disconnection): \"Thanks again, talk soon — goodbye.\""
             )
         case ConversationState.END:
             return (
                 "[STAGE: END]\n"
-                "The call must end now. Say a brief, warm goodbye in under 15 words. "
-                "End your message with the exact phrase \"Have a great day, goodbye.\" "
-                "so the call disconnects cleanly."
+                "The call must end now. Say a brief, warm closing in under 15 words. "
+                "End your message with the EXACT phrase (this triggers call disconnection): "
+                "\"Thanks again, talk soon — goodbye.\""
             )
         case _:
             return f"[STAGE: {stage}]"
