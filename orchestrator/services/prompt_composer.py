@@ -107,7 +107,9 @@ def render_stage_instruction(
         case ConversationState.END:
             return (
                 "[STAGE: END]\n"
-                "Wrap up the call politely. Thank them for their time. Keep it brief."
+                "The call must end now. Say a brief, warm goodbye in under 15 words. "
+                "End your message with the exact phrase \"Have a great day, goodbye.\" "
+                "so the call disconnects cleanly."
             )
         case _:
             return f"[STAGE: {stage}]"

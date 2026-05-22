@@ -2,6 +2,7 @@ import json
 import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import Any
 
 import anthropic
 import structlog
@@ -11,6 +12,8 @@ from fastapi.responses import StreamingResponse
 from orchestrator.config import settings
 from orchestrator.models.call_state import CallState, Intent
 from orchestrator.models.vapi import VapiRequest
+from orchestrator.services.appointment_extractor import extract_appointment
+from orchestrator.services.appointment_store import save_appointment
 from orchestrator.services.call_state_store import (
     get_or_create_call_state,
     save_call_state,
@@ -183,3 +186,43 @@ async def vapi_llm(request: VapiRequest) -> StreamingResponse:
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ── Vapi server webhook (end-of-call reports, status updates) ────────────────
+
+
+def _normalise_vapi_messages(raw_messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Vapi uses 'bot'/'user' roles; convert to OpenAI-style 'assistant'/'user'."""
+    normalised: list[dict[str, str]] = []
+    for m in raw_messages:
+        role = m.get("role")
+        content = m.get("message") or m.get("content") or ""
+        if role == "bot":
+            role = "assistant"
+        if role in ("user", "assistant") and content:
+            normalised.append({"role": role, "content": content})
+    return normalised
+
+
+@router.post("/vapi/server")
+async def vapi_server(payload: dict[str, Any]) -> dict[str, Any]:
+    """Receive Vapi server-side events. We only act on end-of-call-report."""
+    message: dict[str, Any] = payload.get("message") or {}
+    msg_type = message.get("type")
+    logger.info("vapi_server_event", type=msg_type)
+
+    if msg_type != "end-of-call-report":
+        return {"status": "ignored"}
+
+    call: dict[str, Any] = message.get("call") or {}
+    call_id = call.get("id", "unknown")
+
+    transcript_messages = _normalise_vapi_messages(message.get("messages") or [])
+    if not transcript_messages:
+        logger.warning("end_of_call_no_messages", call_id=call_id)
+        return {"status": "no-messages"}
+
+    pack = load_pack(settings.active_pack)
+    appt = await extract_appointment(call_id, pack.name, transcript_messages)
+    await save_appointment(appt)
+    return {"status": "saved", "booked": appt.booked}
