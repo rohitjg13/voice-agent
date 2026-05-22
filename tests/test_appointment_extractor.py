@@ -5,7 +5,38 @@ import pytest
 from orchestrator.services.appointment_extractor import (
     _strip_fences,
     extract_appointment,
+    sanitize_email,
 )
+
+# ── sanitize_email (pure) ────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("raw,expected", [
+    ("rohit@gmail.com", "rohit@gmail.com"),
+    ("Rohit@Gmail.com", "rohit@gmail.com"),
+    ("rohit at gmail dot com", "rohit@gmail.com"),
+    ("rohit AT gmail DOT com", "rohit@gmail.com"),
+    ("j dot smith at acme dot io", "j.smith@acme.io"),
+    ("sam underscore lee at x.com", "sam_lee@x.com"),
+    ("first dash last at company dot co", "first-last@company.co"),
+    ("  rohit  at  gmail  dot  com  ", "rohit@gmail.com"),
+    ("rohit@gmail.com.", "rohit@gmail.com"),
+    ("rohit@gmail.com,", "rohit@gmail.com"),
+])
+def test_sanitize_email_valid(raw, expected):
+    assert sanitize_email(raw) == expected
+
+
+@pytest.mark.parametrize("raw", [
+    None,
+    "",
+    "   ",
+    "not an email",
+    "missing@tld",
+    "@gmail.com",
+    "rohit@",
+])
+def test_sanitize_email_invalid(raw):
+    assert sanitize_email(raw) is None
 
 # ── _strip_fences (pure) ─────────────────────────────────────────────────────
 

@@ -1,6 +1,7 @@
 """Extract structured appointment data from a finished call transcript."""
 
 import json
+import re
 
 import anthropic
 import structlog
@@ -11,15 +12,54 @@ from orchestrator.models.appointment import Appointment
 logger = structlog.get_logger()
 
 
+_SPEECH_TO_EMAIL_REPLACEMENTS = [
+    (r"\s+at\s+the\s+rate\s+(?:of\s+)?", "@"),
+    (r"\s+at\s+(?=\S)", "@"),
+    (r"\s+@\s+", "@"),
+    (r"\s+dot\s+", "."),
+    (r"\s+period\s+", "."),
+    (r"\s+underscore\s+", "_"),
+    (r"\s+under\s+score\s+", "_"),
+    (r"\s+(?:dash|hyphen|minus)\s+", "-"),
+    (r"\s+plus\s+", "+"),
+]
+
+_EMAIL_RE = re.compile(r"^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$")
+
+
+def sanitize_email(raw: str | None) -> str | None:
+    """Normalise spoken-style emails. Returns None when the result isn't a plausible address."""
+    if not raw:
+        return None
+    s = raw.strip().lower()
+
+    for pattern, repl in _SPEECH_TO_EMAIL_REPLACEMENTS:
+        s = re.sub(pattern, repl, s)
+
+    # Remove any remaining whitespace
+    s = re.sub(r"\s+", "", s)
+    # Strip trailing punctuation the LLM might include
+    s = s.rstrip(".,;:!?")
+
+    return s if _EMAIL_RE.match(s) else None
+
+
 _PROMPT = """\
 Analyze this cold-call transcript and extract booking info.
 
 Return ONLY a JSON object (no markdown fences, no commentary) with exactly these fields:
   - booked: true if the prospect explicitly agreed to a meeting/demo/call, false otherwise
-  - prospect_name: the prospect's name if stated, else null
-  - prospect_email: email address if given, else null
-  - requested_time: the agreed time as raw text (e.g. "Thursday at 2pm"), else null
+  - prospect_name: the name the prospect explicitly stated (NOT inferred from the email), else null
+  - prospect_email: email address if given, normalised from speech artifacts, else null
+  - requested_time: the agreed time as raw text (e.g. "Monday May 25 at 10 AM"), else null
   - summary: one short sentence describing the outcome
+
+Email normalisation rules — the transcript is from speech-to-text, so emails arrive spoken aloud:
+  "rohit at gmail dot com"      → "rohit@gmail.com"
+  "j dot smith at acme dot io"  → "j.smith@acme.io"
+  "rohit jg at gmail dot com"   → "rohitjg@gmail.com"
+  "sam underscore lee at x.com" → "sam_lee@x.com"
+Strip ALL whitespace from the final email. Lowercase it.
 
 Transcript:
 {transcript}
@@ -66,10 +106,16 @@ async def extract_appointment(
         logger.warning("appointment_extract_failed", error=str(exc), call_id=call_id)
         return base
 
+    # LLM should already normalise, but sanitise as a backstop.
+    raw_email = data.get("prospect_email")
+    clean_email = sanitize_email(raw_email) if raw_email else None
+    if raw_email and not clean_email:
+        logger.warning("appointment_email_unparseable", raw=raw_email, call_id=call_id)
+
     return base.model_copy(update={
         "booked": bool(data.get("booked", False)),
         "prospect_name": data.get("prospect_name"),
-        "prospect_email": data.get("prospect_email"),
+        "prospect_email": clean_email,
         "requested_time": data.get("requested_time"),
         "summary": data.get("summary"),
     })

@@ -138,15 +138,17 @@ def render_stage_instruction(
         case ConversationState.SCHEDULE:
             return (
                 "[STAGE: SCHEDULE]\n"
-                "Before you can end the call you MUST collect two things:\n"
-                "  1) a concrete day + time (use real dates, see runtime context)\n"
-                "  2) the prospect's EMAIL ADDRESS for the calendar invite\n"
+                "Before ending the call you MUST collect THREE things, in order:\n"
+                "  1) a concrete date + time (pick from the calendar in [RUNTIME CONTEXT])\n"
+                "  2) the prospect's EMAIL ADDRESS\n"
+                "  3) the prospect's NAME\n"
                 "\n"
-                "If a time is agreed but no email has been given, your next sentence MUST ask:\n"
-                f"   \"{s.schedule.strip()}\"\n"
-                "\n"
-                "Do NOT say 'I'll send the invite' or anything similar until the email has been "
-                "spoken back by the prospect. Once you have both, confirm them out loud and wrap up warmly."
+                "Rules:\n"
+                "  - Once a time is agreed, ask: \"" + s.schedule.strip() + "\"\n"
+                "  - Once the email is given, ask: \"And what's the best name to put on the invite?\"\n"
+                "  - Do NOT infer a name from the email username. Always ask explicitly.\n"
+                "  - Do NOT say 'I'll send the invite' until you have all three.\n"
+                "  - When you have all three, briefly read them back to confirm, then wrap up warmly."
             )
         case ConversationState.END:
             return (
