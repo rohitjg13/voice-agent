@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     upstash_redis_rest_url: str = ""
     upstash_redis_rest_token: str = ""
 
+    # Vapi shared secrets — when set, the matching endpoints require the right header.
+    # Leave empty in dev to skip auth (CI tests run without these).
+    vapi_llm_secret: str = ""      # Authorization: Bearer <this>   on /vapi/llm*
+    vapi_server_secret: str = ""   # x-vapi-secret: <this>          on /vapi/server
+
     # Postgres (Supabase / asyncpg — use postgresql:// not postgresql+asyncpg://)
     database_url: str = ""
 

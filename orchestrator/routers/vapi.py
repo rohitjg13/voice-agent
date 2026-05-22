@@ -6,7 +6,7 @@ from typing import Any
 
 import anthropic
 import structlog
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from orchestrator.config import settings
@@ -14,6 +14,7 @@ from orchestrator.models.call_state import CallState, ConversationState, Intent
 from orchestrator.models.vapi import VapiRequest
 from orchestrator.services.appointment_extractor import extract_appointment
 from orchestrator.services.appointment_store import save_appointment
+from orchestrator.services.auth import verify_llm_auth, verify_server_auth
 from orchestrator.services.call_state_store import (
     get_or_create_call_state,
     save_call_state,
@@ -127,8 +128,8 @@ def _make_audit_callback(
     return _audit
 
 
-@router.post("/vapi/llm")
-@router.post("/vapi/llm/chat/completions")  # Vapi appends /chat/completions to the base URL
+@router.post("/vapi/llm", dependencies=[Depends(verify_llm_auth)])
+@router.post("/vapi/llm/chat/completions", dependencies=[Depends(verify_llm_auth)])
 async def vapi_llm(request: VapiRequest) -> StreamingResponse:
     pack = load_pack(settings.active_pack)
 
@@ -223,7 +224,7 @@ def _normalise_vapi_messages(raw_messages: list[dict[str, str]]) -> list[dict[st
     return normalised
 
 
-@router.post("/vapi/server")
+@router.post("/vapi/server", dependencies=[Depends(verify_server_auth)])
 async def vapi_server(payload: dict[str, Any]) -> dict[str, Any]:
     """Receive Vapi server-side events. We only act on end-of-call-report."""
     message: dict[str, Any] = payload.get("message") or {}

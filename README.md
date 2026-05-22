@@ -210,7 +210,9 @@ flyctl deploy --app voice-agent-<yourname>
 
 # Vapi (dashboard)
 #   • Custom LLM URL: https://voice-agent-<yourname>.fly.dev/vapi/llm
+#     Custom LLM API Key: <same as VAPI_LLM_SECRET on Fly>
 #   • Server URL:     https://voice-agent-<yourname>.fly.dev/vapi/server
+#     Server Secret:    <same as VAPI_SERVER_SECRET on Fly>
 #   • End Call Phrases: "Thanks again, talk soon — goodbye"
 #   • Transcriber: Deepgram nova-2
 #   • Voice: ElevenLabs (any warm voice)
@@ -236,6 +238,66 @@ objection handler, RAG, and compliance all work unchanged.
 See `packs/b2b_recruitment/` for a full second-industry example.
 
 ---
+
+## Folder layout
+
+```
+voice-agent-platform/
+├── orchestrator/                    FastAPI app
+│   ├── main.py                      app factory + lifespan
+│   ├── config.py                    pydantic-settings
+│   ├── db.py                        asyncpg pool
+│   ├── routers/vapi.py              /vapi/llm + /vapi/server
+│   ├── models/                      CallState, VapiRequest, Appointment, …
+│   └── services/                    one file per subsystem
+│       ├── state_machine.py         pure FSM
+│       ├── intent_classifier.py     Haiku → (Intent, objection_id)
+│       ├── objection_handler.py     taxonomy + strikes + RAG
+│       ├── prompt_composer.py       Jinja2 + stage + runtime context
+│       ├── compliance.py            DNC, audit, disclosure
+│       ├── rag.py                   chunk + embed + retrieve
+│       ├── ingest.py                CLI for loading knowledge
+│       ├── call_state_store.py      Redis CRUD (mem fallback)
+│       ├── schedule_extractor.py    pull email/name from a turn
+│       ├── appointment_extractor.py post-call structured extraction
+│       ├── appointment_store.py     Supabase UPSERT
+│       └── auth.py                  Vapi shared-secret verifiers
+│
+├── packs/
+│   ├── _schema/pack.py              Pydantic IndustryPack
+│   ├── pack_loader.py               YAML → IndustryPack (cached)
+│   ├── dental_saas/                 pack.yaml + knowledge/*.md
+│   └── b2b_recruitment/             pack.yaml + knowledge/*.md
+│
+├── simulator/                       adversarial test harness
+├── infra/                           Dockerfile + SQL migrations
+├── tests/                           164 tests, mocks for all external APIs
+└── .github/workflows/               ci.yml, deploy.yml
+```
+
+---
+
+## Known limitations / next steps
+
+- **No real calendar invite is sent.** The appointment is captured into a Supabase
+  row; integrating Cal.com / Google Calendar is a 1-hour follow-up.
+- **Webhook auth is shared-secret only.** Set `VAPI_LLM_SECRET` and
+  `VAPI_SERVER_SECRET`; the backend rejects requests without
+  `Authorization: Bearer <secret>` (Custom LLM) and
+  `x-vapi-secret: <secret>` (server webhook), using constant-time comparison.
+  Production might want signed JWTs or mTLS instead.
+- **DNC list is hardcoded.** Real deployment should integrate the FTC DNC registry
+  or an internal suppression list.
+- **No call recording transcription pipeline.** Vapi stores recordings; we don't
+  pull them into our own warehouse for analytics yet.
+- **Latency: ~150ms DB round trip** because Supabase is in Tokyo and Fly is in
+  Chicago. Moving them to the same region would help if we wanted < 1s response
+  budgets.
+- **Voicemail handling** is enabled in Vapi but we don't have a distinct
+  voicemail-script branch in the FSM.
+
+---
+
 ## Architecture Decision Records
 
 ### ADR-001 — Industry knowledge as YAML, not code
@@ -329,7 +391,25 @@ single-question prompt (ask email, then ask name, then confirm).
 
 **Trade-off:** Adds one LLM call per SCHEDULE turn. Worth it for reliability.
 
-### ADR-007 — Adversarial simulator over real-audio CI
+### ADR-007 — Shared-secret webhook auth between Vapi and the backend
+
+**Decision:** Two FastAPI dependencies (`verify_llm_auth`, `verify_server_auth`)
+check headers using `hmac.compare_digest`. Secrets live in env vars
+(`VAPI_LLM_SECRET`, `VAPI_SERVER_SECRET`); when empty, auth is skipped for dev.
+
+**Why:**
+- The Custom LLM URL and server webhook are publicly reachable. Without auth,
+  anyone who finds them can drive Claude calls on your dime or spoof end-of-call
+  reports to write fake appointments.
+- Vapi natively supports both headers in its assistant config — no custom
+  middleware needed on their side.
+- Constant-time comparison avoids timing side-channels against the secret.
+
+**Trade-off:** Static secrets are weaker than signed JWTs or mTLS. Acceptable
+because Vapi's outbound auth options are limited and the threat is opportunistic
+scanning, not a determined attacker.
+
+### ADR-008 — Adversarial simulator over real-audio CI
 
 **Decision:** Tests against the agent's conversational behaviour use in-process
 HTTP calls to `/vapi/llm/` plus an LLM-driven persona. No audio, no Vapi, no
