@@ -23,6 +23,15 @@ def _reset_cache():
     clear_cache()
 
 
+@pytest.fixture(autouse=True)
+def _stub_api_key(monkeypatch: pytest.MonkeyPatch):
+    """Tests mock the Anthropic client; the key just needs to be non-empty to bypass the early return."""
+    monkeypatch.setattr(
+        "orchestrator.services.intent_classifier.settings.anthropic_api_key",
+        "sk-test-stub",
+    )
+
+
 # ── _parse_classification (pure, no I/O) ─────────────────────────────────────
 
 def test_parse_interested():
