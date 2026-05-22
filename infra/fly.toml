@@ -1,4 +1,4 @@
-# fly.toml — filled in at deploy time
+# Replace `app` after running `flyctl launch` — Fly will assign a unique name.
 app = "voice-agent-platform"
 primary_region = "ord"
 
@@ -8,6 +8,8 @@ primary_region = "ord"
 [http_service]
   internal_port = 8080
   force_https = true
+  # Demo defaults: machine sleeps when idle (free), cold-starts on first request (~5s).
+  # For voice production, set min_machines_running = 1 and auto_stop_machines = false.
   auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 0

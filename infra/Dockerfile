@@ -2,11 +2,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install hatchling
+# Copy package metadata + source for setuptools' find()
+COPY pyproject.toml ./
+COPY orchestrator ./orchestrator
+COPY packs ./packs
+COPY simulator ./simulator
 
-COPY pyproject.toml .
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir --upgrade pip \
+ && pip install --no-cache-dir .
 
-COPY . .
+EXPOSE 8080
 
 CMD ["uvicorn", "orchestrator.main:app", "--host", "0.0.0.0", "--port", "8080"]
