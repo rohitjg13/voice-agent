@@ -19,18 +19,22 @@ def _consteq(a: str, b: str) -> bool:
 async def verify_llm_auth(
     authorization: str | None = Header(default=None),
 ) -> None:
-    """Vapi Custom LLM passes the configured API key as `Authorization: Bearer <key>`."""
+    """Vapi Custom LLM passes the configured API key as `Authorization: Bearer <key>`.
+
+    Auth-scheme matching is case-insensitive per RFC 7235 — accepts 'Bearer',
+    'bearer', 'BEARER', etc. so intermediaries that normalise the header don't break us.
+    """
     expected = settings.vapi_llm_secret
     if not expected:
         return  # auth disabled
 
-    if not authorization or not authorization.startswith("Bearer "):
+    scheme, _, token = (authorization or "").partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing bearer token",
         )
-    token = authorization.removeprefix("Bearer ").strip()
-    if not _consteq(token, expected):
+    if not _consteq(token.strip(), expected):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid bearer token",
