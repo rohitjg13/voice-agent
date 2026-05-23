@@ -5,6 +5,9 @@ Usage:
   python -m simulator.cli --all
   python -m simulator.cli --persona skeptical_office_manager
   python -m simulator.cli --persona compliance_tester --verbose
+
+If VAPI_LLM_SECRET is set in .env, the runner attaches a matching Bearer header
+automatically — production-parity testing works without extra flags.
 """
 
 import argparse

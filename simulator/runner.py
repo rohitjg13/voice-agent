@@ -81,6 +81,16 @@ async def _stream_to_text(response: Any) -> str:
 # ── agent + persona turns ────────────────────────────────────────────────────
 
 
+def _agent_auth_headers() -> dict[str, str]:
+    """Mirror the auth Vapi would send when VAPI_LLM_SECRET is configured.
+
+    Without this the in-process simulator gets a blanket 401 whenever the
+    developer sets the secret in .env for production parity testing.
+    """
+    secret = settings.vapi_llm_secret.strip()
+    return {"Authorization": f"Bearer {secret}"} if secret else {}
+
+
 async def _agent_turn(
     client: AsyncClient,
     transcript: list[dict[str, str]],
@@ -92,10 +102,19 @@ async def _agent_turn(
         "messages": transcript,
         "call": {"id": call_id},
     }
-    async with client.stream("POST", "/vapi/llm", json=payload) as response:
+    async with client.stream(
+        "POST", "/vapi/llm", json=payload, headers=_agent_auth_headers()
+    ) as response:
         if response.status_code != 200:
             body = await response.aread()
-            raise RuntimeError(f"agent returned {response.status_code}: {body!r}")
+            hint = (
+                " (auth disabled — check VAPI_LLM_SECRET in .env if your app expects it)"
+                if not settings.vapi_llm_secret.strip()
+                else ""
+            )
+            raise RuntimeError(
+                f"agent returned {response.status_code}: {body!r}{hint}"
+            )
         return await _stream_to_text(response)
 
 

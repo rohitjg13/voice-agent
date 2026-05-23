@@ -128,8 +128,16 @@ def _make_audit_callback(
     return _audit
 
 
-@router.post("/vapi/llm", dependencies=[Depends(verify_llm_auth)])
-@router.post("/vapi/llm/chat/completions", dependencies=[Depends(verify_llm_auth)])
+@router.post(
+    "/vapi/llm",
+    dependencies=[Depends(verify_llm_auth)],
+    operation_id="vapi_llm",
+)
+@router.post(
+    "/vapi/llm/chat/completions",
+    dependencies=[Depends(verify_llm_auth)],
+    operation_id="vapi_llm_chat_completions",
+)
 async def vapi_llm(request: VapiRequest) -> StreamingResponse:
     pack = load_pack(settings.active_pack)
 
