@@ -12,3 +12,4 @@ venv/
 dist/
 *.egg-info/
 .DS_Store
+code_review.json

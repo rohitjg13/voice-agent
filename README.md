@@ -1,8 +1,6 @@
 # Voice Agent Platform
 
-A cold-calling AI agent where **industries are swappable YAML configs**, not code.
-Vapi handles the audio; all conversational intelligence lives in a FastAPI backend
-exposing an OpenAI-compatible Custom LLM endpoint.
+A cold-calling AI agent where **industries are swappable YAML configs**, not code. Vapi handles the audio; all conversational intelligence lives in a FastAPI backend exposing an OpenAI-compatible Custom LLM endpoint.
 
 | | |
 |---|---|
@@ -19,53 +17,53 @@ exposing an OpenAI-compatible Custom LLM endpoint.
    Caller's phone
         │
         ▼
-   ┌───────────────────── Vapi ─────────────────────┐
-   │  Twilio (telephony)                            │
-   │  Deepgram (STT) ──► transcript                 │
-   │  ElevenLabs (TTS) ◄── text                     │
-   │  Voice UX: VAD, turn-taking, barge-in,         │
-   │            voicemail detect, end-call detect   │
-   │                                                │
-   │  Custom LLM: forwards OpenAI-shaped JSON to    │
-   │  → POST /vapi/llm/chat/completions             │
-   │                                                │
-   │  End-of-call report:                           │
-   │  → POST /vapi/server                           │
-   └────────────────────┬───────────────────────────┘
-                        │
-                        ▼
-   ┌──────────── FastAPI orchestrator (Fly.io) ─────────────┐
-   │                                                        │
-   │  POST /vapi/llm/chat/completions (per turn)            │
-   │  ─────────────────────────────────────────             │
-   │   1. DNC pre-flight check                              │
-   │   2. Load IndustryPack (YAML → Pydantic, cached)       │
-   │   3. Fetch CallState from Redis (or initialise)        │
-   │   4. Classify intent via Haiku (one line)              │
-   │      → (Intent, objection_id)                          │
-   │   5. FSM transition: OPENER → PERMISSION → DISCOVERY   │
-   │                     → PITCH ⇄ OBJECTION → CLOSE        │
-   │                     → SCHEDULE → END                   │
-   │   6. If OBJECTION: pack lookup + RAG retrieval         │
-   │   7. If SCHEDULE: extract email/name from user turn    │
-   │   8. Compose system prompt:                            │
-   │      [base from pack] + [runtime context: today,       │
-   │      working-day calendar] + [stage instruction]       │
-   │      + [compliance directive]                          │
-   │   9. Stream Claude Sonnet 4.6 (OpenAI SSE format)      │
-   │  10. Post-stream: audit response, persist state        │
-   │                                                        │
-   │  POST /vapi/server (call ended)                        │
-   │  ─────────────────────────────                         │
-   │   • Haiku extracts {booked, time, email, name}         │
-   │   • UPSERT into appointments table                     │
-   │                                                        │
-   └────┬───────────────────────────────┬───────────────────┘
-        │                               │
-        ▼                               ▼
-  Upstash Redis                    Supabase Postgres
-  (per-call state,                 • pgvector RAG chunks
-   4-hour TTL)                     • appointments table
+   ┌────────────────────── Vapi ──────────────────────┐
+   │  Twilio (telephony)                              │
+   │  Deepgram (STT) ──► transcript                   │
+   │  ElevenLabs (TTS) ◄── text                       │
+   │  Voice UX: VAD, turn-taking, barge-in,           │
+   │            voicemail detect, end-call detect      │
+   │                                                  │
+   │  Custom LLM: forwards OpenAI-shaped JSON to      │
+   │  → POST /vapi/llm/chat/completions               │
+   │                                                  │
+   │  End-of-call report:                             │
+   │  → POST /vapi/server                             │
+   └─────────────────────┬────────────────────────────┘
+                         │
+                         ▼
+   ┌───────────── FastAPI orchestrator (Fly.io) ─────────────┐
+   │                                                          │
+   │  POST /vapi/llm/chat/completions (per turn)              │
+   │  ─────────────────────────────────────────               │
+   │   1. DNC pre-flight check                                │
+   │   2. Load IndustryPack (YAML → Pydantic, cached)         │
+   │   3. Fetch CallState from Redis (or initialise)          │
+   │   4. Classify intent via Haiku (one line)                │
+   │      → (Intent, objection_id)                            │
+   │   5. FSM transition: OPENER → PERMISSION → DISCOVERY     │
+   │                     → PITCH ⇄ OBJECTION → CLOSE          │
+   │                     → SCHEDULE → END                     │
+   │   6. If OBJECTION: pack lookup + RAG retrieval           │
+   │   7. If SCHEDULE: extract email/name from user turn      │
+   │   8. Compose system prompt:                              │
+   │      [base from pack] + [runtime context: today,          │
+   │      working-day calendar] + [stage instruction]          │
+   │      + [compliance directive]                            │
+   │   9. Stream Claude Sonnet 4.6 (OpenAI SSE format)        │
+   │  10. Post-stream: audit response, persist state          │
+   │                                                          │
+   │  POST /vapi/server (call ended)                          │
+   │  ─────────────────────────────                           │
+   │   • Haiku extracts {booked, time, email, name}           │
+   │   • UPSERT into appointments table                       │
+   │                                                          │
+   └────┬──────────────────────────────────┬──────────────────┘
+        │                                  │
+        ▼                                  ▼
+  Upstash Redis                       Supabase Postgres
+  (per-call state,                    • pgvector RAG chunks
+   4-hour TTL)                        • appointments table
 ```
 
 ---
@@ -159,9 +157,7 @@ You'll see OpenAI-format SSE chunks streaming back from Claude.
 
 ### Run the adversarial simulator
 
-The simulator drives a full conversation against the live `/vapi/llm` endpoint
-**in-process** via `httpx.ASGITransport` — no audio, no Vapi, no network. Costs
-about $0.01 per persona (both sides use Haiku).
+The simulator drives a full conversation against the live `/vapi/llm` endpoint **in-process** via `httpx.ASGITransport` — no audio, no Vapi, no network. Costs about $0.01 per persona (both sides use Haiku).
 
 ```bash
 # All 12 personas
@@ -172,6 +168,7 @@ about $0.01 per persona (both sides use Haiku).
 ```
 
 Output:
+
 ```
 ═══ Simulator Report ═══
 Personas run:        12
@@ -219,8 +216,7 @@ flyctl deploy --app voice-agent-<yourname>
 #   • First Message: hardcode the pack's opener
 ```
 
-CI/CD (`.github/workflows/`) runs ruff + mypy + pytest on every PR and
-auto-deploys to Fly.io on push to `main` (needs `FLY_API_TOKEN` repo secret).
+CI/CD (`.github/workflows/`) runs ruff + mypy + pytest on every PR and auto-deploys to Fly.io on push to `main` (needs `FLY_API_TOKEN` repo secret).
 
 ---
 
@@ -232,8 +228,7 @@ Zero Python changes needed. Three steps:
 2. Drop knowledge docs into `packs/<industry>/knowledge/*.md`
 3. Run `python -m orchestrator.services.ingest <industry>`
 
-Set `ACTIVE_PACK=<industry>` in the environment and restart. The FSM, classifier,
-objection handler, RAG, and compliance all work unchanged.
+Set `ACTIVE_PACK=<industry>` in the environment and restart. The FSM, classifier, objection handler, RAG, and compliance all work unchanged.
 
 See `packs/b2b_recruitment/` for a full second-industry example.
 
@@ -279,22 +274,12 @@ voice-agent-platform/
 
 ## Known limitations / next steps
 
-- **No real calendar invite is sent.** The appointment is captured into a Supabase
-  row; integrating Cal.com / Google Calendar is a 1-hour follow-up.
-- **Webhook auth is shared-secret only.** Set `VAPI_LLM_SECRET` and
-  `VAPI_SERVER_SECRET`; the backend rejects requests without
-  `Authorization: Bearer <secret>` (Custom LLM) and
-  `x-vapi-secret: <secret>` (server webhook), using constant-time comparison.
-  Production might want signed JWTs or mTLS instead.
-- **DNC list is hardcoded.** Real deployment should integrate the FTC DNC registry
-  or an internal suppression list.
-- **No call recording transcription pipeline.** Vapi stores recordings; we don't
-  pull them into our own warehouse for analytics yet.
-- **Latency: ~150ms DB round trip** because Supabase is in Tokyo and Fly is in
-  Chicago. Moving them to the same region would help if we wanted < 1s response
-  budgets.
-- **Voicemail handling** is enabled in Vapi but we don't have a distinct
-  voicemail-script branch in the FSM.
+- **No real calendar invite is sent.** The appointment is captured into a Supabase row; integrating Cal.com / Google Calendar is a 1-hour follow-up.
+- **Webhook auth is shared-secret only.** Set `VAPI_LLM_SECRET` and `VAPI_SERVER_SECRET`; the backend rejects requests without `Authorization: Bearer <secret>` (Custom LLM) and `x-vapi-secret: <secret>` (server webhook), using constant-time comparison. Production might want signed JWTs or mTLS instead.
+- **DNC list is hardcoded.** Real deployment should integrate the FTC DNC registry or an internal suppression list.
+- **No call recording transcription pipeline.** Vapi stores recordings; we don't pull them into our own warehouse for analytics yet.
+- **Latency: ~150ms DB round trip** because Supabase is in Tokyo and Fly is in Chicago. Moving them to the same region would help if we wanted < 1s response budgets.
+- **Voicemail handling** is enabled in Vapi but we don't have a distinct voicemail-script branch in the FSM.
 
 ---
 
@@ -302,8 +287,7 @@ voice-agent-platform/
 
 ### ADR-001 — Industry knowledge as YAML, not code
 
-**Decision:** Each industry is a single YAML file plus markdown knowledge docs.
-The schema lives in one Pydantic model.
+**Decision:** Each industry is a single YAML file plus markdown knowledge docs. The schema lives in one Pydantic model.
 
 **Why:**
 - Non-engineers can ship a new industry (sales team owns the YAML)
@@ -311,59 +295,46 @@ The schema lives in one Pydantic model.
 - Forces the schema to be the contract, prevents per-industry custom code
 - Bad packs fail loudly at load time (`extra="forbid"`)
 
-**Trade-off:** YAML can express persona + scripts + objections + compliance, but
-not arbitrary per-industry logic (e.g. industry-specific tools). When that
-becomes necessary, a pack-scoped plugin hook is the next step.
+**Trade-off:** YAML can express persona + scripts + objections + compliance, but not arbitrary per-industry logic (e.g. industry-specific tools). When that becomes necessary, a pack-scoped plugin hook is the next step.
 
 ### ADR-002 — Hand-rolled FSM instead of LangGraph
 
-**Decision:** Conversation state transitions are a 90-line pure function with a
-`match` statement, not a graph framework.
+**Decision:** Conversation state transitions are a 90-line pure function with a `match` statement, not a graph framework.
 
 **Why:**
-- The FSM has 8 states and ~15 transitions. LangGraph's tracing / persistence
-  features don't earn the dependency weight at this size.
+- The FSM has 8 states and ~15 transitions. LangGraph's tracing / persistence features don't earn the dependency weight at this size.
 - Tests are trivial: pass a `CallState`, assert the next state. No mocking.
 - Onboarding cost for someone reading the code: ~5 minutes.
 
-**Trade-off:** If transitions grow beyond ~30 or need branch-and-merge semantics,
-LangGraph's graph compiler pays off. We're not there.
+**Trade-off:** If transitions grow beyond ~30 or need branch-and-merge semantics, LangGraph's graph compiler pays off. We're not there.
 
 ### ADR-003 — Vapi Custom LLM mode (not Vapi's built-in model routing)
 
-**Decision:** Vapi knows nothing about packs, state, or RAG. It treats our
-backend as an OpenAI-compatible LLM endpoint.
+**Decision:** Vapi knows nothing about packs, state, or RAG. It treats our backend as an OpenAI-compatible LLM endpoint.
 
 **Why:**
 - All intelligence stays in one process — easy to test end-to-end without audio
 - Provider-agnostic: swap Claude → GPT-4 → local model without touching Vapi
 - The simulator (step 12) runs the same code path Vapi uses, in-process
-- Per-call state can live in our DB instead of being smuggled through Vapi's
-  metadata fields
+- Per-call state can live in our DB instead of being smuggled through Vapi's metadata fields
 
-**Trade-off:** We have to handle SSE formatting and OpenAI-shaped payloads
-ourselves. Worth it.
+**Trade-off:** We have to handle SSE formatting and OpenAI-shaped payloads ourselves. Worth it.
 
 ### ADR-004 — Split LLMs: Haiku for classification, Sonnet for generation
 
-**Decision:** Intent / objection-id / schedule extraction use Haiku 4.5. The
-spoken response uses Sonnet 4.6.
+**Decision:** Intent / objection-id / schedule extraction use Haiku 4.5. The spoken response uses Sonnet 4.6.
 
 **Why:**
 - Classification is one-line structured output — Haiku is reliable and ~$0.001/call
-- Generation needs strict multi-step instruction-following (collect email, then
-  name, then confirm); early tests with Haiku showed it skipping steps
+- Generation needs strict multi-step instruction-following (collect email, then name, then confirm); early tests with Haiku showed it skipping steps
 - ~12× cost difference, but Sonnet calls run ~1/call vs Haiku's ~2/call
 - Total LLM cost per conversation: ~$0.02
 
-**Trade-off:** Two models means two prompts to maintain. Acceptable given the
-clarity gain.
+**Trade-off:** Two models means two prompts to maintain. Acceptable given the clarity gain.
 
 ### ADR-005 — Post-call extraction for appointments (not mid-call tool use)
 
-**Decision:** When Vapi sends the end-of-call webhook, we run one Haiku call
-over the full transcript to extract `{booked, name, email, time}` and UPSERT
-to Supabase.
+**Decision:** When Vapi sends the end-of-call webhook, we run one Haiku call over the full transcript to extract `{booked, name, email, time}` and UPSERT to Supabase.
 
 **Why:**
 - Mid-call tool use over SSE is fiddly (function-call deltas, partial JSON)
@@ -371,53 +342,35 @@ to Supabase.
 - Idempotent: a row keyed by `call_id` is easy to re-run if extraction failed
 - Failures don't degrade the live call
 
-**Trade-off:** No real-time booking signal to Vapi mid-call (e.g. couldn't push
-a calendar event before the user hangs up). If we needed that, we'd add a
-`book_appointment` tool definition at the SCHEDULE state.
+**Trade-off:** No real-time booking signal to Vapi mid-call (e.g. couldn't push a calendar event before the user hangs up). If we needed that, we'd add a `book_appointment` tool definition at the SCHEDULE state.
 
 ### ADR-006 — FSM gates SCHEDULE exit on collected_email AND collected_name
 
-**Decision:** The state machine **refuses** to transition `SCHEDULE → END`
-until both fields are set in `CallState`. Each turn in SCHEDULE shows a
-single-question prompt (ask email, then ask name, then confirm).
+**Decision:** The state machine **refuses** to transition `SCHEDULE → END` until both fields are set in `CallState`. Each turn in SCHEDULE shows a single-question prompt (ask email, then ask name, then confirm).
 
 **Why:**
-- Earlier versions relied on the LLM following multi-step prompt instructions.
-  Sonnet would skip steps "to be conversational" — booking a meeting without
-  ever asking for the name.
-- Making it a state invariant means the bot literally cannot end the call until
-  the data is captured.
+- Earlier versions relied on the LLM following multi-step prompt instructions. Sonnet would skip steps "to be conversational" — booking a meeting without ever asking for the name.
+- Making it a state invariant means the bot literally cannot end the call until the data is captured.
 - The per-turn extractor is one cheap Haiku call.
 
 **Trade-off:** Adds one LLM call per SCHEDULE turn. Worth it for reliability.
 
 ### ADR-007 — Shared-secret webhook auth between Vapi and the backend
 
-**Decision:** Two FastAPI dependencies (`verify_llm_auth`, `verify_server_auth`)
-check headers using `hmac.compare_digest`. Secrets live in env vars
-(`VAPI_LLM_SECRET`, `VAPI_SERVER_SECRET`); when empty, auth is skipped for dev.
+**Decision:** Two FastAPI dependencies (`verify_llm_auth`, `verify_server_auth`) check headers using `hmac.compare_digest`. Secrets live in env vars (`VAPI_LLM_SECRET`, `VAPI_SERVER_SECRET`); when empty, auth is skipped for dev.
 
 **Why:**
-- The Custom LLM URL and server webhook are publicly reachable. Without auth,
-  anyone who finds them can drive Claude calls on your dime or spoof end-of-call
-  reports to write fake appointments.
-- Vapi natively supports both headers in its assistant config — no custom
-  middleware needed on their side.
+- The Custom LLM URL and server webhook are publicly reachable. Without auth, anyone who finds them can drive Claude calls on your dime or spoof end-of-call reports to write fake appointments.
+- Vapi natively supports both headers in its assistant config — no custom middleware needed on their side.
 - Constant-time comparison avoids timing side-channels against the secret.
 
-**Trade-off:** Static secrets are weaker than signed JWTs or mTLS. Acceptable
-because Vapi's outbound auth options are limited and the threat is opportunistic
-scanning, not a determined attacker.
+**Trade-off:** Static secrets are weaker than signed JWTs or mTLS. Acceptable because Vapi's outbound auth options are limited and the threat is opportunistic scanning, not a determined attacker.
 
 ### ADR-008 — Adversarial simulator over real-audio CI
 
-**Decision:** Tests against the agent's conversational behaviour use in-process
-HTTP calls to `/vapi/llm/` plus an LLM-driven persona. No audio, no Vapi, no
-Twilio.
+**Decision:** Tests against the agent's conversational behaviour use in-process HTTP calls to `/vapi/llm/` plus an LLM-driven persona. No audio, no Vapi, no Twilio.
 
 **Why:**
-- A full Vapi audio round-trip costs ~$0.09/min and takes minutes; the
-  simulator runs 12 personas in ~30 seconds for ~$0.09 total
+- A full Vapi audio round-trip costs ~$0.09/min and takes minutes; the simulator runs 12 personas in ~30 seconds for ~$0.09 total
 - All conversational regressions surface before CI hits the cloud
 - Vapi's voice UX (VAD, barge-in) is Vapi's concern, not ours
-
