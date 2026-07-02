@@ -10,8 +10,12 @@ import structlog
 
 from orchestrator.config import settings
 from orchestrator.services.appointment_extractor import sanitize_email
+from orchestrator.services.llm_http import shared_async_http_client
+from orchestrator.services.pii import sanitize_name
 
 logger = structlog.get_logger()
+
+_MAX_UTTERANCE_CHARS = 2000
 
 
 _PROMPT = """\
@@ -38,12 +42,19 @@ async def extract_schedule_info(message: str) -> dict[str, str | None]:
     try:
         client = anthropic.AsyncAnthropic(
             api_key=settings.anthropic_api_key,
-            max_retries=2,
+            max_retries=1,
+            timeout=settings.classifier_timeout_seconds,
+            http_client=shared_async_http_client(),
         )
         response = await client.messages.create(
             model=settings.classifier_model,
             max_tokens=80,
-            messages=[{"role": "user", "content": _PROMPT.format(message=message)}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": _PROMPT.format(message=message[:_MAX_UTTERANCE_CHARS]),
+                }
+            ],
         )
         raw = response.content[0].text.strip()  # type: ignore[union-attr]
         if raw.startswith("```"):
@@ -59,7 +70,10 @@ async def extract_schedule_info(message: str) -> dict[str, str | None]:
         result["email"] = sanitize_email(email_raw)
 
     name_raw = data.get("name")
-    if isinstance(name_raw, str) and name_raw.lower() != "null" and name_raw.strip():
-        result["name"] = name_raw.strip()
+    if isinstance(name_raw, str) and name_raw.lower() != "null":
+        # The collected name is later interpolated into the system prompt, so
+        # it must come out as plain words — sanitize_name strips structural
+        # tokens a prospect could speak to steer the agent.
+        result["name"] = sanitize_name(name_raw)
 
     return result

@@ -33,8 +33,6 @@ class CallState(BaseModel):
     pitch_turns: int = 0
     # {objection_id: strike_count} — "generic" key used before step-8 classifier
     objection_strikes: dict[str, int] = Field(default_factory=dict)
-    # Indices into pack.stages.discovery_questions already posed
-    asked_question_indices: list[int] = Field(default_factory=list)
     # Where to return after an objection is handled
     pre_objection_stage: ConversationState = ConversationState.PITCH
     # Set by FSM when entering OBJECTION; used by objection handler

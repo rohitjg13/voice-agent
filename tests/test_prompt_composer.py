@@ -1,6 +1,10 @@
 import pytest
 
-from orchestrator.services.prompt_composer import render_system_prompt
+from orchestrator.models.call_state import CallState, ConversationState
+from orchestrator.services.prompt_composer import (
+    render_stage_instruction,
+    render_system_prompt,
+)
 from packs._schema.pack import (
     AgentPersona,
     ComplianceConfig,
@@ -79,3 +83,39 @@ def test_output_is_stripped():
     pack = _minimal_pack(system_prompt_template="  Hello {{ agent.name }}.  \n")
     prompt = render_system_prompt(pack)
     assert prompt == "Hello Jordan."
+
+
+def test_sandbox_blocks_python_internals():
+    pack = _minimal_pack(
+        system_prompt_template="{{ agent.__class__.__mro__ }}"
+    )
+    with pytest.raises(ValueError, match="Failed to render"):
+        render_system_prompt(pack)
+
+
+# ── discovery question rotation ───────────────────────────────────────────────
+
+
+def _discovery_state(turns: int) -> CallState:
+    return CallState(
+        call_id="c1",
+        pack_name="dental_saas",
+        stage=ConversationState.DISCOVERY,
+        discovery_turns=turns,
+    )
+
+
+def test_discovery_asks_different_question_each_turn():
+    pack = load_pack("dental_saas")
+    questions = pack.stages.discovery_questions
+    first = render_stage_instruction(pack, _discovery_state(0))
+    second = render_stage_instruction(pack, _discovery_state(1))
+    assert questions[0] in first
+    assert questions[1] in second
+    assert questions[0] not in second
+
+
+def test_discovery_exhausted_falls_back_to_followup():
+    pack = load_pack("dental_saas")
+    instruction = render_stage_instruction(pack, _discovery_state(99))
+    assert "follow-up" in instruction

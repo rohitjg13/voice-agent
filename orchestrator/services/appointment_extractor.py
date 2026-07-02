@@ -8,8 +8,14 @@ import structlog
 
 from orchestrator.config import settings
 from orchestrator.models.appointment import Appointment
+from orchestrator.services.llm_http import shared_async_http_client
+from orchestrator.services.pii import sanitize_name
 
 logger = structlog.get_logger()
+
+# Generous cap for a long call transcript; bounds LLM cost if a hostile
+# payload reaches the webhook.
+_MAX_TRANSCRIPT_CHARS = 60_000
 
 
 _SPEECH_TO_EMAIL_REPLACEMENTS = [
@@ -94,27 +100,42 @@ async def extract_appointment(
         return base
 
     try:
-        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key, max_retries=3)
+        client = anthropic.AsyncAnthropic(
+            api_key=settings.anthropic_api_key,
+            max_retries=3,  # post-call, not latency-sensitive — durability wins
+            http_client=shared_async_http_client(),
+        )
         response = await client.messages.create(
             model=settings.classifier_model,
             max_tokens=300,
-            messages=[{"role": "user", "content": _PROMPT.format(transcript=transcript)}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": _PROMPT.format(
+                        transcript=transcript[:_MAX_TRANSCRIPT_CHARS]
+                    ),
+                }
+            ],
         )
         raw = _strip_fences(response.content[0].text)  # type: ignore[union-attr]
         data = json.loads(raw)
-    except (json.JSONDecodeError, Exception) as exc:
+        if not isinstance(data, dict):
+            raise ValueError(f"expected JSON object, got {type(data).__name__}")
+    except Exception as exc:
         logger.warning("appointment_extract_failed", error=str(exc), call_id=call_id)
         return base
 
     # LLM should already normalise, but sanitise as a backstop.
     raw_email = data.get("prospect_email")
-    clean_email = sanitize_email(raw_email) if raw_email else None
+    clean_email = sanitize_email(raw_email) if isinstance(raw_email, str) else None
     if raw_email and not clean_email:
-        logger.warning("appointment_email_unparseable", raw=raw_email, call_id=call_id)
+        logger.warning("appointment_email_unparseable", call_id=call_id)
+
+    raw_name = data.get("prospect_name")
 
     return base.model_copy(update={
         "booked": bool(data.get("booked", False)),
-        "prospect_name": data.get("prospect_name"),
+        "prospect_name": sanitize_name(raw_name) if isinstance(raw_name, str) else None,
         "prospect_email": clean_email,
         "requested_time": data.get("requested_time"),
         "summary": data.get("summary"),

@@ -8,8 +8,11 @@ from openai import AsyncOpenAI
 
 from orchestrator.config import settings
 from orchestrator.db import get_pool
+from orchestrator.services.llm_http import shared_async_http_client
 
 logger = structlog.get_logger()
+
+_MAX_EMBED_CHARS = 4000
 
 
 # ── chunking ─────────────────────────────────────────────────────────────────
@@ -49,10 +52,13 @@ def chunk_text(text: str, min_chars: int = 50, max_chars: int = 800) -> list[str
 
 
 async def embed(text: str) -> list[float]:
-    client = AsyncOpenAI(api_key=settings.openai_api_key)
+    client = AsyncOpenAI(
+        api_key=settings.openai_api_key,
+        http_client=shared_async_http_client(),
+    )
     response = await client.embeddings.create(
         model=settings.embedding_model,
-        input=text.replace("\n", " "),
+        input=text.replace("\n", " ")[:_MAX_EMBED_CHARS],
     )
     return response.data[0].embedding
 

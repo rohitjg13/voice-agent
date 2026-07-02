@@ -147,6 +147,8 @@ async def _persona_turn(
         system=persona.system_prompt,
         messages=flipped,  # type: ignore[arg-type]
     )
+    if not response.content:
+        return "Okay."
     return response.content[0].text  # type: ignore[union-attr]
 
 

@@ -8,11 +8,16 @@ import structlog
 
 from orchestrator.config import settings
 from orchestrator.models.call_state import Intent
+from orchestrator.services.llm_http import shared_async_http_client
 from packs._schema.pack import IndustryPack
 
 logger = structlog.get_logger()
 
 _FALLBACK = (Intent.NEUTRAL, "none")
+
+# A single spoken utterance; anything longer is garbage or abuse — truncate
+# rather than ship unbounded text to the classifier on every turn.
+_MAX_UTTERANCE_CHARS = 2000
 
 _PROMPT_TEMPLATE = """\
 You are classifying a prospect's response during a cold sales call.
@@ -90,12 +95,21 @@ async def classify_intent(
     try:
         client = anthropic.AsyncAnthropic(
             api_key=settings.anthropic_api_key,
-            max_retries=4,
+            # One retry and a tight timeout: this sits on the hot path of every
+            # turn, and the NEUTRAL fallback is cheap — dead air is not.
+            max_retries=1,
+            timeout=settings.classifier_timeout_seconds,
+            http_client=shared_async_http_client(),
         )
         response = await client.messages.create(
             model=settings.classifier_model,
             max_tokens=20,
-            messages=[{"role": "user", "content": _build_prompt(message, pack)}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": _build_prompt(message[:_MAX_UTTERANCE_CHARS], pack),
+                }
+            ],
         )
         raw = response.content[0].text  # type: ignore[union-attr]
         result = _parse_classification(raw, valid_ids)

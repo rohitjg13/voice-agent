@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
-from jinja2 import Environment, StrictUndefined, TemplateError
+from jinja2 import StrictUndefined, TemplateError
+from jinja2.sandbox import SandboxedEnvironment
 
 from orchestrator.models.call_state import CallState, ConversationState
 from packs._schema.pack import IndustryPack
@@ -12,7 +13,10 @@ from packs._schema.pack import IndustryPack
 if TYPE_CHECKING:
     from orchestrator.services.objection_handler import ObjectionContext
 
-_env = Environment(
+# Sandboxed: pack templates are repo-controlled today, but the whole point of
+# Industry Packs is that new YAML gets dropped in — a template must never be
+# able to reach Python internals ({{ ''.__class__ }}-style escapes).
+_env = SandboxedEnvironment(
     undefined=StrictUndefined,
     trim_blocks=True,
     lstrip_blocks=True,
@@ -95,11 +99,15 @@ def render_stage_instruction(
                 f"If they push back, handle it warmly but don't persist past one attempt."
             )
         case ConversationState.DISCOVERY:
-            remaining = [
-                q for i, q in enumerate(s.discovery_questions)
-                if i not in state.asked_question_indices
-            ]
-            next_q = remaining[0] if remaining else "Ask a relevant follow-up question."
+            # discovery_turns counts turns spent in DISCOVERY, so it walks the
+            # question list one per turn (and picks up where it left off after
+            # an objection detour).
+            questions = s.discovery_questions
+            next_q = (
+                questions[state.discovery_turns]
+                if state.discovery_turns < len(questions)
+                else "Ask a relevant follow-up question."
+            )
             return (
                 f"[STAGE: DISCOVERY — turn {state.discovery_turns + 1}]\n"
                 f"Ask this question (one at a time): \"{next_q}\"\n"

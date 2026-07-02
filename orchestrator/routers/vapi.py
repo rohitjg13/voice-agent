@@ -1,4 +1,6 @@
+import asyncio
 import json
+import re
 import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -11,7 +13,7 @@ from fastapi.responses import StreamingResponse
 
 from orchestrator.config import settings
 from orchestrator.models.call_state import CallState, ConversationState, Intent
-from orchestrator.models.vapi import VapiRequest
+from orchestrator.models.vapi import VapiMessage, VapiRequest
 from orchestrator.services.appointment_extractor import extract_appointment
 from orchestrator.services.appointment_store import save_appointment
 from orchestrator.services.auth import verify_llm_auth, verify_server_auth
@@ -25,7 +27,9 @@ from orchestrator.services.compliance import (
     render_compliance_directive,
 )
 from orchestrator.services.intent_classifier import classify_intent
+from orchestrator.services.llm_http import shared_async_http_client
 from orchestrator.services.objection_handler import handle_objection
+from orchestrator.services.pii import mask_email
 from orchestrator.services.prompt_composer import (
     render_runtime_context,
     render_stage_instruction,
@@ -40,18 +44,53 @@ logger = structlog.get_logger()
 
 router = APIRouter()
 
+# call_id becomes a Redis key and a log field — keep it to a boring charset
+_CALL_ID_SAFE_RE = re.compile(r"[^A-Za-z0-9._:-]")
+_MAX_CALL_ID_LEN = 128
+
+# Spoken when generation fails mid-stream — dead air loses the call
+_RECOVERY_LINE = "Sorry, I lost you for a second — could you say that again?"
+
+
+def _sanitize_call_id(raw: object, default: str = "dev-call") -> str:
+    if raw is None:
+        return default
+    cleaned = _CALL_ID_SAFE_RE.sub("", str(raw))[:_MAX_CALL_ID_LEN]
+    return cleaned or default
+
+
+def _to_anthropic_messages(raw: list[VapiMessage]) -> list[dict[str, str]]:
+    """Shape Vapi's OpenAI-style history for the Anthropic API.
+
+    Anthropic requires alternating roles starting with 'user'. Real Vapi calls
+    start with the assistant (the agent speaks first on a cold call) and can
+    contain consecutive same-role fragments or empty partials — all of which
+    would 400 and drop the call.
+    """
+    merged: list[dict[str, str]] = []
+    for m in raw:
+        if m.role not in ("user", "assistant") or not m.content.strip():
+            continue
+        if merged and merged[-1]["role"] == m.role:
+            merged[-1]["content"] += "\n" + m.content
+        else:
+            merged.append({"role": m.role, "content": m.content})
+
+    if not merged or merged[0]["role"] != "user":
+        merged.insert(0, {"role": "user", "content": "(call connected)"})
+    return merged
+
 
 async def _stream_anthropic_text(
     messages: list[dict[str, str]],
     system: str,
 ) -> AsyncIterator[str]:
     """Yield raw text chunks from Claude."""
-    if not settings.anthropic_api_key:
-        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
-
     client = anthropic.AsyncAnthropic(
         api_key=settings.anthropic_api_key,
-        max_retries=4,  # 2 by default; overloaded_error transient under voice load
+        max_retries=2,  # more retries = more dead air; failures fall back to _RECOVERY_LINE
+        timeout=settings.generation_timeout_seconds,
+        http_client=shared_async_http_client(),
     )
     async with client.messages.stream(
         model=settings.generation_model,
@@ -68,22 +107,35 @@ async def _wrap_as_sse(
     text_iter: AsyncIterator[str],
     on_complete: Callable[[str], Awaitable[None]] | None = None,
 ) -> AsyncIterator[str]:
-    """Wrap text chunks in OpenAI SSE format. Calls on_complete(full_text) after stream ends."""
+    """Wrap text chunks in OpenAI SSE format. Calls on_complete(full_text) after stream ends.
+
+    A generation failure mid-stream must still end in a well-formed SSE stream —
+    otherwise the voice pipeline goes silent — so errors degrade to a spoken
+    recovery line instead of propagating.
+    """
     chunk_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
     created = int(time.time())
     buffer: list[str] = []
 
     yield _sse(chunk_id, created, {"role": "assistant"}, finish_reason=None)
 
-    async for text in text_iter:
-        buffer.append(text)
-        yield _sse(chunk_id, created, {"content": text}, finish_reason=None)
+    try:
+        async for text in text_iter:
+            buffer.append(text)
+            yield _sse(chunk_id, created, {"content": text}, finish_reason=None)
+    except Exception:
+        logger.exception("generation_stream_failed")
+        buffer.append(_RECOVERY_LINE)
+        yield _sse(chunk_id, created, {"content": _RECOVERY_LINE}, finish_reason=None)
 
     yield _sse(chunk_id, created, {}, finish_reason="stop")
     yield "data: [DONE]\n\n"
 
     if on_complete:
-        await on_complete("".join(buffer))
+        try:
+            await on_complete("".join(buffer))
+        except Exception:
+            logger.exception("post_stream_hook_failed")
 
 
 def _sse(
@@ -139,28 +191,39 @@ def _make_audit_callback(
     operation_id="vapi_llm_chat_completions",
 )
 async def vapi_llm(request: VapiRequest) -> StreamingResponse:
+    if not settings.anthropic_api_key:
+        # Fail before the stream starts — an exception mid-SSE can't become a status code
+        raise HTTPException(status_code=503, detail="Generation model not configured")
+
     pack = load_pack(settings.active_pack)
 
     # ── DNC pre-flight ────────────────────────────────────────────────────────
-    customer = (request.call or {}).get("customer") or {}
-    phone = customer.get("number")
-    if not await check_dnc(phone):
-        raise HTTPException(
-            status_code=403,
-            detail=f"Phone number {phone} is on the do-not-call list",
-        )
+    customer = (request.call or {}).get("customer")
+    phone = customer.get("number") if isinstance(customer, dict) else None
+    if not await check_dnc(phone if isinstance(phone, str) else None):
+        # Number stays out of the response body (and off any error tracker);
+        # check_dnc already logged it for the compliance audit trail.
+        raise HTTPException(status_code=403, detail="Call refused by do-not-call policy")
 
-    # Identify call — Vapi provides call.id; fall back to "dev" for local testing
-    call_id: str = (request.call or {}).get("id", "dev-call")
+    # Identify call — Vapi provides call.id; fall back to "dev-call" for local testing
+    call_id = _sanitize_call_id((request.call or {}).get("id"))
 
     # Fetch or initialise per-call state
     call_state = await get_or_create_call_state(call_id, pack.name)
 
-    # ── Intent classification ─────────────────────────────────────────────────
     last_user_msg = next(
         (m.content for m in reversed(request.messages) if m.role == "user"),
         None,
     )
+
+    # ── Schedule sub-state extraction (concurrent with classification) ───────
+    # When already in SCHEDULE, the email/name extractor can run alongside the
+    # intent classifier — two sequential Haiku round-trips would be audible lag.
+    schedule_task: asyncio.Task[dict[str, str | None]] | None = None
+    if call_state.stage == ConversationState.SCHEDULE and last_user_msg:
+        schedule_task = asyncio.create_task(extract_schedule_info(last_user_msg))
+
+    # ── Intent classification ─────────────────────────────────────────────────
     if last_user_msg:
         intent, objection_id = await classify_intent(last_user_msg, pack)
     else:
@@ -169,17 +232,21 @@ async def vapi_llm(request: VapiRequest) -> StreamingResponse:
     # ── State transition ──────────────────────────────────────────────────────
     call_state = transition(call_state, intent, objection_id=objection_id)
 
-    # ── Schedule sub-state extraction ─────────────────────────────────────────
-    # When in SCHEDULE, scan the last user message for email/name and persist.
-    # FSM won't leave SCHEDULE until both are collected.
-    if call_state.stage == ConversationState.SCHEDULE and last_user_msg:
-        info = await extract_schedule_info(last_user_msg)
+    # FSM won't leave SCHEDULE until both email and name are collected.
+    if last_user_msg and (
+        schedule_task or call_state.stage == ConversationState.SCHEDULE
+    ):
+        info = await (schedule_task or extract_schedule_info(last_user_msg))
         if info.get("email") and not call_state.collected_email:
             call_state.collected_email = info["email"]
-            logger.info("schedule_email_collected", call_id=call_id, email=info["email"])
+            logger.info(
+                "schedule_email_collected",
+                call_id=call_id,
+                email=mask_email(info["email"] or ""),
+            )
         if info.get("name") and not call_state.collected_name:
             call_state.collected_name = info["name"]
-            logger.info("schedule_name_collected", call_id=call_id, name=info["name"])
+            logger.info("schedule_name_collected", call_id=call_id)
         # If we just collected the last missing piece, FSM should advance to END
         # on the NEXT turn; this turn still serves the confirm-and-close prompt.
 
@@ -199,13 +266,7 @@ async def vapi_llm(request: VapiRequest) -> StreamingResponse:
     ]
     system = "\n\n".join(p for p in parts if p)
 
-    messages = [
-        {"role": m.role, "content": m.content}
-        for m in request.messages
-        if m.role in ("user", "assistant")
-    ]
-    if not messages:
-        raise HTTPException(status_code=422, detail="messages must contain at least one user turn")
+    messages = _to_anthropic_messages(request.messages)
 
     audit_cb = _make_audit_callback(pack, call_state, call_id)
 
@@ -219,15 +280,23 @@ async def vapi_llm(request: VapiRequest) -> StreamingResponse:
 # ── Vapi server webhook (end-of-call reports, status updates) ────────────────
 
 
-def _normalise_vapi_messages(raw_messages: list[dict[str, str]]) -> list[dict[str, str]]:
-    """Vapi uses 'bot'/'user' roles; convert to OpenAI-style 'assistant'/'user'."""
+def _normalise_vapi_messages(raw_messages: object) -> list[dict[str, str]]:
+    """Vapi uses 'bot'/'user' roles; convert to OpenAI-style 'assistant'/'user'.
+
+    Webhook payloads are only shared-secret authenticated, so shape is verified
+    field by field — a malformed report must not 500 the endpoint.
+    """
+    if not isinstance(raw_messages, list):
+        return []
     normalised: list[dict[str, str]] = []
     for m in raw_messages:
+        if not isinstance(m, dict):
+            continue
         role = m.get("role")
         content = m.get("message") or m.get("content") or ""
         if role == "bot":
             role = "assistant"
-        if role in ("user", "assistant") and content:
+        if role in ("user", "assistant") and isinstance(content, str) and content:
             normalised.append({"role": role, "content": content})
     return normalised
 
@@ -235,17 +304,23 @@ def _normalise_vapi_messages(raw_messages: list[dict[str, str]]) -> list[dict[st
 @router.post("/vapi/server", dependencies=[Depends(verify_server_auth)])
 async def vapi_server(payload: dict[str, Any]) -> dict[str, Any]:
     """Receive Vapi server-side events. We only act on end-of-call-report."""
-    message: dict[str, Any] = payload.get("message") or {}
+    message = payload.get("message")
+    if not isinstance(message, dict):
+        logger.warning("vapi_server_malformed_payload")
+        return {"status": "ignored"}
+
     msg_type = message.get("type")
     logger.info("vapi_server_event", type=msg_type)
 
     if msg_type != "end-of-call-report":
         return {"status": "ignored"}
 
-    call: dict[str, Any] = message.get("call") or {}
-    call_id = call.get("id", "unknown")
+    call = message.get("call")
+    call_id = _sanitize_call_id(
+        call.get("id") if isinstance(call, dict) else None, default="unknown"
+    )
 
-    transcript_messages = _normalise_vapi_messages(message.get("messages") or [])
+    transcript_messages = _normalise_vapi_messages(message.get("messages"))
     if not transcript_messages:
         logger.warning("end_of_call_no_messages", call_id=call_id)
         return {"status": "no-messages"}

@@ -1,21 +1,31 @@
 name: Deploy to Fly.io
 
+# Deploys only after CI succeeds on main (or on explicit manual dispatch) —
+# a red test suite must never reach production.
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: []  # CI runs in parallel; for blocking, change to `needs: ci` after renaming
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     concurrency:
       group: deploy-production
       cancel-in-progress: false
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Deploy the exact commit CI validated, not whatever main moved to
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 

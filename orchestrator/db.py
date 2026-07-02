@@ -16,16 +16,27 @@ def _dsn() -> str:
 
 
 async def init_pool() -> None:
+    """Create the pool, degrading to pool-less mode if the DB is unreachable.
+
+    Everything that uses the pool (RAG retrieval, appointment persistence)
+    already handles a missing pool — a DB outage should cost us knowledge
+    grounding, not the ability to answer phone calls.
+    """
     global _pool
     if not settings.database_url:
         logger.warning("db_pool_skipped", reason="DATABASE_URL not set")
         return
-    _pool = await asyncpg.create_pool(_dsn(), min_size=1, max_size=5, ssl="require")
-    # Register pgvector codec on every connection
-    from pgvector.asyncpg import register_vector
+    try:
+        _pool = await asyncpg.create_pool(_dsn(), min_size=1, max_size=5, ssl="require")
+        # Register pgvector codec on every connection
+        from pgvector.asyncpg import register_vector
 
-    async with _pool.acquire() as conn:
-        await register_vector(conn)
+        async with _pool.acquire() as conn:
+            await register_vector(conn)
+    except Exception as exc:
+        logger.error("db_pool_failed", error=str(exc))
+        _pool = None
+        return
     logger.info("db_pool_ready")
 
 

@@ -10,11 +10,24 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     environment: str = "development"
 
+    # Escape hatch: allow booting in production with empty Vapi secrets
+    # (endpoints publicly callable). Off by default — production fails closed.
+    allow_insecure_public_endpoints: bool = False
+
+    # Reject request bodies larger than this (DoS / LLM-cost amplification guard).
+    # Vapi turn payloads are a few KB; 1 MB leaves room for very long transcripts.
+    max_request_bytes: int = 1_000_000
+
     # Model routing — Sonnet for response generation (instruction-following matters),
     # Haiku for classification (one-line output, cheap)
     generation_model: str = "claude-sonnet-4-6"
     classifier_model: str = "claude-haiku-4-5-20251001"
     generation_temperature: float = 0.4
+
+    # Voice latency budgets — a hung upstream call means dead air on the phone,
+    # so these are much tighter than SDK defaults (10 min).
+    generation_timeout_seconds: float = 30.0
+    classifier_timeout_seconds: float = 10.0
 
     # Redis (Upstash)
     upstash_redis_rest_url: str = ""

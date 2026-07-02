@@ -5,7 +5,7 @@ A cold-calling AI agent where **industries are swappable YAML configs**, not cod
 | | |
 |---|---|
 | Live API | `https://voice-agent-rohitjg.fly.dev` |
-| Tests | 154 passing |
+| Tests | 226 passing |
 | Adversarial personas | 12 (CI evals run in seconds, no audio) |
 | Industries | `dental_saas`, `b2b_recruitment` (drop in YAML to add a third) |
 
@@ -187,7 +187,7 @@ Per-persona breakdown:
 
 ```bash
 .venv/bin/pytest tests/ -v
-# 154 passed
+# 226 passed
 ```
 
 ---
@@ -202,7 +202,12 @@ flyctl secrets set \
   DATABASE_URL="postgresql://..." \
   UPSTASH_REDIS_REST_URL="..." UPSTASH_REDIS_REST_TOKEN="..." \
   ACTIVE_PACK="dental_saas" \
+  ENVIRONMENT="production" \
+  VAPI_LLM_SECRET="$(openssl rand -hex 32)" \
+  VAPI_SERVER_SECRET="$(openssl rand -hex 32)" \
   --app voice-agent-<yourname>
+# NOTE: with ENVIRONMENT=production the app refuses to boot unless both
+# VAPI_* secrets are set — endpoints are never silently public.
 flyctl deploy --app voice-agent-<yourname>
 
 # Vapi (dashboard)
@@ -216,7 +221,7 @@ flyctl deploy --app voice-agent-<yourname>
 #   • First Message: hardcode the pack's opener
 ```
 
-CI/CD (`.github/workflows/`) runs ruff + mypy + pytest on every PR and auto-deploys to Fly.io on push to `main` (needs `FLY_API_TOKEN` repo secret).
+CI/CD (`.github/workflows/`) runs ruff + mypy + pytest on every PR; pushes to `main` deploy to Fly.io **only after CI passes** on that commit (needs `FLY_API_TOKEN` repo secret).
 
 ---
 
