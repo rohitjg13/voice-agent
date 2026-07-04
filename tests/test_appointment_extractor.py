@@ -3,10 +3,32 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from orchestrator.services.appointment_extractor import (
+    _parse_start_iso,
     _strip_fences,
     extract_appointment,
     sanitize_email,
 )
+
+# ── _parse_start_iso (pure) ──────────────────────────────────────────────────
+
+def test_parse_start_iso_with_offset():
+    dt = _parse_start_iso("2026-07-09T14:00:00+05:30", "UTC")
+    assert dt is not None and dt.utcoffset().total_seconds() == 5.5 * 3600
+
+
+def test_parse_start_iso_z_suffix():
+    dt = _parse_start_iso("2026-07-09T14:00:00Z", "Asia/Kolkata")
+    assert dt is not None and dt.utcoffset().total_seconds() == 0
+
+
+def test_parse_start_iso_naive_gets_pack_tz():
+    dt = _parse_start_iso("2026-07-09T14:00:00", "Asia/Kolkata")
+    assert dt is not None and dt.utcoffset().total_seconds() == 5.5 * 3600
+
+
+@pytest.mark.parametrize("raw", [None, "", "null", "not a date", 123])
+def test_parse_start_iso_invalid(raw):
+    assert _parse_start_iso(raw, "UTC") is None
 
 # ── sanitize_email (pure) ────────────────────────────────────────────────────
 
@@ -100,6 +122,37 @@ async def test_extract_booked():
     assert appt.requested_time == "Thursday at 2pm"
     assert appt.call_id == "call-123"
     assert appt.transcript and "jane@dental.com" in appt.transcript
+
+
+@pytest.mark.asyncio
+async def test_extract_parses_start_iso():
+    messages = [{"role": "user", "content": "Thursday at 2pm works, jane@dental.com"}]
+    extraction = (
+        '{"booked": true, "prospect_email": "jane@dental.com", '
+        '"requested_time": "Thursday at 2pm", '
+        '"start_iso": "2026-07-09T14:00:00+05:30", '
+        '"summary": "Booked"}'
+    )
+    with patch("orchestrator.services.appointment_extractor.anthropic.AsyncAnthropic") as mock_cls:
+        mock_cls.return_value.messages.create = AsyncMock(return_value=_mock_response(extraction))
+        appt = await extract_appointment(
+            "call-iso", "dental_saas", messages, timezone="Asia/Kolkata"
+        )
+
+    assert appt.start_time is not None
+    assert appt.start_time.hour == 14
+    assert appt.start_time.utcoffset().total_seconds() == 5.5 * 3600
+
+
+@pytest.mark.asyncio
+async def test_extract_missing_start_iso_leaves_none():
+    messages = [{"role": "user", "content": "Sure, sometime works"}]
+    extraction = '{"booked": true, "requested_time": "sometime"}'
+    with patch("orchestrator.services.appointment_extractor.anthropic.AsyncAnthropic") as mock_cls:
+        mock_cls.return_value.messages.create = AsyncMock(return_value=_mock_response(extraction))
+        appt = await extract_appointment("call-noiso", "dental_saas", messages)
+
+    assert appt.start_time is None
 
 
 @pytest.mark.asyncio

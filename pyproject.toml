@@ -21,6 +21,8 @@ dependencies = [
     "asyncpg>=0.29.0",
     # Cache / state
     "upstash-redis>=1.1.0",
+    # Calendar — Google service-account token minting (Cal.com uses httpx directly)
+    "google-auth>=2.0.0",
     # Config / validation
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",

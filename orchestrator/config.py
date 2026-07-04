@@ -45,5 +45,13 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     rag_top_k: int = 3
 
+    # Calendar integration — which provider a pack uses is set per-pack
+    # (pack.calendar.provider); the secret lives here. Empty ⇒ that provider is
+    # unavailable and booking degrades to DB-only (like a missing DB pool).
+    calcom_api_key: str = ""
+    calcom_base_url: str = "https://api.cal.com/v1"
+    # Google service-account credentials: either the raw JSON blob or a path to it.
+    google_calendar_credentials_json: str = ""
+
 
 settings = Settings()

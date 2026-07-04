@@ -2,6 +2,8 @@
 
 import json
 import re
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import anthropic
 import structlog
@@ -53,11 +55,16 @@ def sanitize_email(raw: str | None) -> str | None:
 _PROMPT = """\
 Analyze this cold-call transcript and extract booking info.
 
+Reference: right now it is {now_full} ({timezone}). Resolve relative dates
+("Thursday", "tomorrow", "next week") against this.
+
 Return ONLY a JSON object (no markdown fences, no commentary) with exactly these fields:
   - booked: true if the prospect explicitly agreed to a meeting/demo/call, false otherwise
   - prospect_name: the name the prospect explicitly stated (NOT inferred from the email), else null
   - prospect_email: email address if given, normalised from speech artifacts, else null
   - requested_time: the agreed time as raw text (e.g. "Monday May 25 at 10 AM"), else null
+  - start_iso: requested_time as ISO 8601 with the {timezone} UTC offset
+    (e.g. "2026-07-09T14:00:00+05:30"). null if no specific time was agreed.
   - summary: one short sentence describing the outcome
 
 Email normalisation rules — the transcript is from speech-to-text, so emails arrive spoken aloud:
@@ -70,6 +77,23 @@ Strip ALL whitespace from the final email. Lowercase it.
 Transcript:
 {transcript}
 """
+
+
+def _parse_start_iso(raw: object, timezone: str) -> datetime | None:
+    """Turn the LLM's start_iso string into a tz-aware datetime, or None."""
+    if not isinstance(raw, str) or not raw.strip() or raw.strip().lower() == "null":
+        return None
+    try:
+        # Accept a trailing "Z" (Python < 3.11 fromisoformat can't, be safe).
+        dt = datetime.fromisoformat(raw.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        try:
+            dt = dt.replace(tzinfo=ZoneInfo(timezone))
+        except Exception:
+            return None
+    return dt
 
 
 def _strip_fences(raw: str) -> str:
@@ -89,6 +113,7 @@ async def extract_appointment(
     call_id: str,
     pack_name: str,
     messages: list[dict[str, str]],
+    timezone: str = "UTC",
 ) -> Appointment:
     transcript = "\n".join(
         f"{m['role'].upper()}: {m['content']}" for m in messages
@@ -98,6 +123,12 @@ async def extract_appointment(
 
     if not settings.anthropic_api_key or not messages:
         return base
+
+    try:
+        now = datetime.now(ZoneInfo(timezone))
+    except Exception:
+        # Unknown tz string shouldn't sink the whole extraction.
+        timezone, now = "UTC", datetime.now(ZoneInfo("UTC"))
 
     try:
         client = anthropic.AsyncAnthropic(
@@ -112,7 +143,9 @@ async def extract_appointment(
                 {
                     "role": "user",
                     "content": _PROMPT.format(
-                        transcript=transcript[:_MAX_TRANSCRIPT_CHARS]
+                        transcript=transcript[:_MAX_TRANSCRIPT_CHARS],
+                        now_full=now.strftime("%A, %B %d, %Y %I:%M %p"),
+                        timezone=timezone,
                     ),
                 }
             ],
@@ -138,5 +171,6 @@ async def extract_appointment(
         "prospect_name": sanitize_name(raw_name) if isinstance(raw_name, str) else None,
         "prospect_email": clean_email,
         "requested_time": data.get("requested_time"),
+        "start_time": _parse_start_iso(data.get("start_iso"), timezone),
         "summary": data.get("summary"),
     })

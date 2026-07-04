@@ -20,6 +20,8 @@ _HERMETIC_DEFAULTS = {
     "database_url": "",
     "vapi_llm_secret": "",
     "vapi_server_secret": "",
+    "calcom_api_key": "",
+    "google_calendar_credentials_json": "",
     "environment": "development",
     "allow_insecure_public_endpoints": False,
 }

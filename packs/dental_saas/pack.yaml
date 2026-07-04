@@ -167,3 +167,11 @@ scheduling:
   working_days: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]
   working_hours: "9 AM to 6 PM"
   timezone: "Asia/Kolkata"
+
+# Real calendar invite for booked demos. Leave provider: none to stay DB-only.
+# Switch to cal_com or google per client; secrets stay in env, not here.
+calendar:
+  provider: none
+  # event_type_id: 123456      # Cal.com: which event type to book
+  # calendar_id: ops@clinic.com  # Google: which calendar to write to
+  duration_minutes: 15
