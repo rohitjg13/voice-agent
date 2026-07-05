@@ -15,7 +15,7 @@ from orchestrator.config import settings
 from orchestrator.models.call_state import CallState, ConversationState, Intent
 from orchestrator.models.vapi import VapiMessage, VapiRequest
 from orchestrator.services.appointment_extractor import extract_appointment
-from orchestrator.services.appointment_store import save_appointment
+from orchestrator.services.appointment_store import get_calendar_ref, save_appointment
 from orchestrator.services.auth import verify_llm_auth, verify_server_auth
 from orchestrator.services.calendar import book_appointment
 from orchestrator.services.call_state_store import (
@@ -330,8 +330,21 @@ async def vapi_server(payload: dict[str, Any]) -> dict[str, Any]:
     appt = await extract_appointment(
         call_id, pack.name, transcript_messages, timezone=pack.scheduling.timezone
     )
-    # Best-effort real invite; never blocks the DB record if it fails.
-    appt = await book_appointment(pack, appt)
+    # Idempotency: Vapi may redeliver an end-of-call report. If a prior delivery
+    # already booked an invite, reuse it — a retry must not create a second
+    # calendar event, and the re-save must not null out the stored reference
+    # (the freshly extracted appt carries no calendar fields).
+    existing = await get_calendar_ref(call_id)
+    if existing is not None and existing.event_id:
+        appt = appt.model_copy(update={
+            "end_time": existing.end_time,
+            "calendar_provider": existing.provider,
+            "calendar_event_id": existing.event_id,
+            "calendar_event_url": existing.event_url,
+        })
+    else:
+        # Best-effort real invite; never blocks the DB record if it fails.
+        appt = await book_appointment(pack, appt)
     await save_appointment(appt)
     return {
         "status": "saved",

@@ -43,15 +43,24 @@ async def book_appointment(pack: IndustryPack, appt: Appointment) -> Appointment
     Any provider error is swallowed — the appointment is still saved DB-side.
     """
     cfg = pack.calendar
+    start = appt.start_time
+
+    # end_time is meaningful whenever we resolved a concrete start — independent
+    # of the provider — so DB-only mode (provider "none", or a skipped/failed
+    # invite) still persists a complete [start, end] window.
+    if start is not None and appt.end_time is None:
+        appt = appt.model_copy(
+            update={"end_time": start + timedelta(minutes=cfg.duration_minutes)}
+        )
+
     if (
         cfg.provider == "none"
         or not appt.booked
-        or appt.start_time is None
+        or start is None
         or not appt.prospect_email
     ):
         return appt
 
-    start = appt.start_time
     end = start + timedelta(minutes=cfg.duration_minutes)
     tz = pack.scheduling.timezone
 

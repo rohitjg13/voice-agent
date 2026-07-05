@@ -62,12 +62,35 @@ def _mock_client(resp: MagicMock) -> MagicMock:
     ("cal_com", {"start_time": None}),     # no resolved time
     ("cal_com", {"prospect_email": None}), # no email to invite
 ])
-async def test_book_noop_returns_unchanged(provider, appt_kwargs):
+async def test_book_creates_no_invite(provider, appt_kwargs):
     pack = _pack(provider, event_type_id=1)
     appt = _appt(**appt_kwargs)
     out = await cal.book_appointment(pack, appt)
-    assert out is appt
     assert out.calendar_event_id is None
+    assert out.calendar_provider is None
+    assert out.calendar_event_url is None
+
+
+# ── end_time is filled even when no invite is created ────────────────────────
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("provider,appt_kwargs", [
+    ("none", {}),                          # DB-only pack
+    ("cal_com", {"prospect_email": None}), # invite skipped, slot still known
+])
+async def test_end_time_derived_without_invite(provider, appt_kwargs):
+    pack = _pack(provider, event_type_id=1, duration_minutes=45)
+    out = await cal.book_appointment(pack, _appt(**appt_kwargs))
+    assert out.end_time == datetime(2026, 7, 9, 14, 45, tzinfo=TZ)
+    assert out.calendar_event_id is None
+
+
+@pytest.mark.asyncio
+async def test_no_end_time_without_start():
+    pack = _pack("cal_com", event_type_id=1)
+    out = await cal.book_appointment(pack, _appt(start_time=None))
+    assert out.end_time is None
 
 
 # ── Cal.com ──────────────────────────────────────────────────────────────────

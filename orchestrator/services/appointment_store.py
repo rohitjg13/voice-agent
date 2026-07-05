@@ -1,11 +1,54 @@
 """Persist Appointment rows to Supabase."""
 
+from dataclasses import dataclass
+from datetime import datetime
+
 import structlog
 
 from orchestrator.db import get_pool
 from orchestrator.models.appointment import Appointment
 
 logger = structlog.get_logger()
+
+
+@dataclass
+class CalendarRef:
+    """The calendar-invite columns already stored for a call, if any."""
+
+    provider: str | None
+    event_id: str | None
+    event_url: str | None
+    end_time: datetime | None
+
+
+async def get_calendar_ref(call_id: str) -> CalendarRef | None:
+    """Return the stored calendar reference for a call, or None if no row / no DB.
+
+    Used to make end-of-call booking idempotent: if a prior delivery of the same
+    report already created an invite, the caller reuses it instead of booking a
+    second event. Returns None (⇒ proceed to book) when there's no DB pool.
+    """
+    pool = get_pool()
+    if pool is None:
+        return None
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT calendar_provider, calendar_event_id, calendar_event_url, end_time
+            FROM appointments
+            WHERE call_id = $1
+            """,
+            call_id,
+        )
+    if row is None:
+        return None
+    return CalendarRef(
+        provider=row["calendar_provider"],
+        event_id=row["calendar_event_id"],
+        event_url=row["calendar_event_url"],
+        end_time=row["end_time"],
+    )
 
 
 async def save_appointment(appt: Appointment) -> None:
