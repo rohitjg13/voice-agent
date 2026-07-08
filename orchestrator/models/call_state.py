@@ -1,4 +1,5 @@
 from enum import StrEnum
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -27,6 +28,9 @@ class Intent(StrEnum):
 class CallState(BaseModel):
     call_id: str
     pack_name: str
+    # Tenant identity (None = legacy ACTIVE_PACK fallback path)
+    org_id: UUID | None = None
+    agent_id: UUID | None = None
     stage: ConversationState = ConversationState.OPENER
     turn_count: int = 0
     discovery_turns: int = 0

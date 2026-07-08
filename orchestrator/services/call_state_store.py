@@ -4,6 +4,7 @@ Falls back to an in-process dict when Redis is not configured (dev / CI).
 """
 
 from typing import Any
+from uuid import UUID
 
 import structlog
 
@@ -73,13 +74,20 @@ async def save_call_state(call_id: str, state: CallState) -> None:
         _mem[key] = payload
 
 
-async def get_or_create_call_state(call_id: str, pack_name: str) -> CallState:
+async def get_or_create_call_state(
+    call_id: str,
+    pack_name: str,
+    org_id: UUID | None = None,
+    agent_id: UUID | None = None,
+) -> CallState:
     state = await get_call_state(call_id)
     if state is None:
         state = CallState(
             call_id=call_id,
             pack_name=pack_name,
             stage=ConversationState.OPENER,
+            org_id=org_id,
+            agent_id=agent_id,
         )
         logger.info("new_call", call_id=call_id, pack=pack_name)
     return state

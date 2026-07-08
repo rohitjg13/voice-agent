@@ -7,11 +7,10 @@ import asyncio
 import sys
 from pathlib import Path
 
-import asyncpg
 import structlog
 from pgvector.asyncpg import register_vector
 
-from orchestrator.config import settings
+from orchestrator import db
 from orchestrator.services.rag import chunk_text, embed
 
 logger = structlog.get_logger()
@@ -24,8 +23,7 @@ async def ingest_pack(pack_name: str) -> None:
     if not knowledge_dir.exists():
         raise FileNotFoundError(f"No knowledge dir at {knowledge_dir}")
 
-    dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
-    conn = await asyncpg.connect(dsn, ssl="require")
+    conn = await db.connect_direct()
     await register_vector(conn)
 
     # Ensure table exists

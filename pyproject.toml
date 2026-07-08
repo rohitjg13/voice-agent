@@ -28,6 +28,10 @@ dependencies = [
     "pyyaml>=6.0.1",
     # Templating
     "jinja2>=3.1.4",
+    # Dashboard auth (Supabase JWT verification)
+    "pyjwt[crypto]>=2.8.0",
+    # Multipart uploads (knowledge files, lead CSVs)
+    "python-multipart>=0.0.9",
     # Observability
     "structlog>=24.2.0",
 ]

@@ -27,7 +27,11 @@ async def init_pool() -> None:
         logger.warning("db_pool_skipped", reason="DATABASE_URL not set")
         return
     try:
-        _pool = await asyncpg.create_pool(_dsn(), min_size=1, max_size=5, ssl="require")
+        dsn = _dsn()
+        # Respect an explicit sslmode in the DSN (self-hosted Postgres often has
+        # no TLS); default to require for hosted Supabase.
+        ssl_arg = None if "sslmode=" in dsn else "require"
+        _pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5, ssl=ssl_arg)
         # Register pgvector codec on every connection
         from pgvector.asyncpg import register_vector
 
@@ -55,3 +59,18 @@ def set_pool(pool: asyncpg.Pool | None) -> None:
     """Test helper — inject a pool (or None) without touching the DB."""
     global _pool
     _pool = pool
+
+
+async def connect_direct() -> asyncpg.Connection:
+    """One-off direct connection for CLI scripts — honors ?sslmode= in the DSN."""
+    dsn = _dsn()
+    return await asyncpg.connect(dsn, ssl=None if "sslmode=" in dsn else "require")
+
+
+def require_pool() -> asyncpg.Pool:
+    """Pool or 503 — the dashboard API does not degrade gracefully like the voice path."""
+    if _pool is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    return _pool

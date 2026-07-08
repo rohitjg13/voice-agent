@@ -41,6 +41,21 @@ class Settings(BaseSettings):
     # Postgres (Supabase / asyncpg — use postgresql:// not postgresql+asyncpg://)
     database_url: str = ""
 
+    # Supabase Auth (dashboard API). Self-hosted / legacy projects verify with
+    # the shared HS256 JWT secret; cloud projects with asymmetric signing keys
+    # leave the secret empty and set supabase_url so JWKS verification is used.
+    supabase_url: str = ""
+    supabase_jwt_secret: str = ""
+
+    # Vapi programmatic control (assistant/phone/call management)
+    vapi_api_key: str = ""
+    # Public URL Vapi calls back to (customLlmUrl / serverUrl), e.g. the Fly app URL
+    public_base_url: str = ""
+
+    # Campaign dialer
+    dialer_max_concurrency: int = 2
+    dialer_poll_seconds: float = 5.0
+
     # RAG
     embedding_model: str = "text-embedding-3-small"
     rag_top_k: int = 3

@@ -3,6 +3,8 @@ RAG pipeline: chunk → embed → retrieve.
 All functions degrade gracefully when OpenAI or DB is unconfigured.
 """
 
+from uuid import UUID
+
 import structlog
 from openai import AsyncOpenAI
 
@@ -66,8 +68,17 @@ async def embed(text: str) -> list[float]:
 # ── retrieval ─────────────────────────────────────────────────────────────────
 
 
-async def retrieve(query: str, pack_name: str, top_k: int | None = None) -> list[str]:
+async def retrieve(
+    query: str,
+    pack_name: str,
+    top_k: int | None = None,
+    agent_id: UUID | None = None,
+) -> list[str]:
     """Return the top-k most relevant content chunks for the query.
+
+    With agent_id: the tenant's own uploads plus the shared template corpus
+    (agent_id IS NULL rows for the same pack) — uploads always carry an
+    agent_id, so no cross-tenant leakage. Without: legacy pack-wide corpus.
 
     Returns [] when OpenAI or DB is not configured — callers degrade gracefully.
     """
@@ -85,18 +96,33 @@ async def retrieve(query: str, pack_name: str, top_k: int | None = None) -> list
         embedding_str = "[" + ",".join(f"{x:.8f}" for x in embedding) + "]"
 
         async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                """
-                SELECT content
-                FROM knowledge_chunks
-                WHERE pack_name = $1
-                ORDER BY embedding <=> $2::vector
-                LIMIT $3
-                """,
-                pack_name,
-                embedding_str,
-                k,
-            )
+            if agent_id is not None:
+                rows = await conn.fetch(
+                    """
+                    SELECT content
+                    FROM knowledge_chunks
+                    WHERE agent_id = $1 OR (agent_id IS NULL AND pack_name = $2)
+                    ORDER BY embedding <=> $3::vector
+                    LIMIT $4
+                    """,
+                    agent_id,
+                    pack_name,
+                    embedding_str,
+                    k,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT content
+                    FROM knowledge_chunks
+                    WHERE pack_name = $1
+                    ORDER BY embedding <=> $2::vector
+                    LIMIT $3
+                    """,
+                    pack_name,
+                    embedding_str,
+                    k,
+                )
         return [row["content"] for row in rows]
 
     except Exception as exc:
