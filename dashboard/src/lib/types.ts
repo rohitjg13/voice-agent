@@ -26,6 +26,14 @@ export type PackConfig = {
 	scheduling: { working_days: string[]; working_hours: string; timezone: string };
 };
 
+export type PackSummary = {
+	name: string;
+	version: string;
+	industry: string;
+	agent_name: string;
+	product_name: string;
+};
+
 export type Agent = {
 	id: string;
 	name: string;

@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { api, apiJson, safeDetail } from '$lib/server/api';
+import type { PackSummary } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
 type Agent = {
@@ -9,14 +10,15 @@ type Agent = {
 	status: string;
 	vapi_assistant_id: string | null;
 };
-type Template = { name: string; industry: string; product_name: string };
+type Template = { name: string; industry: string; agent_name: string; product_name: string };
 
 export const load: PageServerLoad = async (event) => {
-	const [agents, templates] = await Promise.all([
+	const [agents, templates, packs] = await Promise.all([
 		apiJson<Agent[]>(event, '/api/v1/agents'),
-		apiJson<Template[]>(event, '/api/v1/templates')
+		apiJson<Template[]>(event, '/api/v1/templates'),
+		apiJson<PackSummary[]>(event, '/api/v1/packs')
 	]);
-	return { agents, templates };
+	return { agents, templates, packs };
 };
 
 export const actions: Actions = {

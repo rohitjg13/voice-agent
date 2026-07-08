@@ -30,7 +30,7 @@ def _parse_config(raw: Any) -> IndustryPack:
 async def list_templates() -> list[dict[str, Any]]:
     pool = require_pool()
     rows = await pool.fetch(
-        "SELECT name, version, config FROM pack_templates ORDER BY name"
+        "SELECT name, version, config FROM pack_templates WHERE org_id IS NULL ORDER BY name"
     )
     out: list[dict[str, Any]] = []
     for r in rows:
@@ -47,11 +47,20 @@ async def list_templates() -> list[dict[str, Any]]:
     return out
 
 
-async def get_template_config(name: str) -> IndustryPack | None:
+async def get_template_config(name: str, org_id: UUID | None = None) -> IndustryPack | None:
     pool = require_pool()
-    row = await pool.fetchrow(
-        "SELECT config FROM pack_templates WHERE name = $1", name
-    )
+    if org_id:
+        row = await pool.fetchrow(
+            """SELECT config FROM pack_templates
+               WHERE name = $1 AND (org_id IS NULL OR org_id = $2)
+               ORDER BY org_id NULLS FIRST LIMIT 1""",
+            name, org_id,
+        )
+    else:
+        row = await pool.fetchrow(
+            "SELECT config FROM pack_templates WHERE name = $1 AND org_id IS NULL",
+            name,
+        )
     return _parse_config(row["config"]) if row else None
 
 
@@ -59,7 +68,7 @@ async def create_agent(
     org_id: UUID, name: str, template_name: str
 ) -> dict[str, Any] | None:
     """Copy-on-create from a template. None = unknown template."""
-    template = await get_template_config(template_name)
+    template = await get_template_config(template_name, org_id)
     if template is None:
         return None
     pool = require_pool()
@@ -148,6 +157,72 @@ async def set_vapi_assistant_id(
         org_id,
         agent_id,
         vapi_assistant_id,
+    )
+    return result.endswith(" 1")
+
+
+# ── custom org packs CRUD ───────────────────────────────────────────────────
+
+
+async def list_custom_packs(org_id: UUID) -> list[dict[str, Any]]:
+    pool = require_pool()
+    rows = await pool.fetch(
+        "SELECT name, version, config FROM pack_templates WHERE org_id = $1 ORDER BY name",
+        org_id,
+    )
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        cfg = json.loads(r["config"]) if isinstance(r["config"], str) else r["config"]
+        out.append(
+            {
+                "name": r["name"],
+                "version": r["version"],
+                "industry": cfg.get("industry", ""),
+                "agent_name": cfg.get("agent", {}).get("name", ""),
+                "product_name": cfg.get("product", {}).get("name", ""),
+            }
+        )
+    return out
+
+
+async def get_custom_pack(org_id: UUID, name: str) -> IndustryPack | None:
+    pool = require_pool()
+    row = await pool.fetchrow(
+        "SELECT config FROM pack_templates WHERE name = $1 AND org_id = $2",
+        name, org_id,
+    )
+    return _parse_config(row["config"]) if row else None
+
+
+async def create_custom_pack(org_id: UUID, pack: IndustryPack) -> bool:
+    pool = require_pool()
+    try:
+        await pool.execute(
+            """INSERT INTO pack_templates (name, version, config, org_id)
+               VALUES ($1, $2, $3, $4)""",
+            pack.name, pack.version, json.dumps(pack.model_dump()), org_id,
+        )
+        return True
+    except Exception:
+        return False
+
+
+async def update_custom_pack(org_id: UUID, name: str, pack: IndustryPack) -> bool:
+    pool = require_pool()
+    result: str = await pool.execute(
+        """UPDATE pack_templates
+           SET version = $3, config = $4, updated_at = NOW()
+           WHERE name = $1 AND org_id = $2""",
+        name, org_id, pack.version, json.dumps(pack.model_dump()),
+    )
+    return result.endswith(" 1")
+
+
+async def delete_custom_pack(org_id: UUID, name: str) -> bool:
+    pool = require_pool()
+    result: str = await pool.execute(
+        "DELETE FROM pack_templates WHERE name = $1 AND org_id = $2",
+        name, org_id,
     )
     return result.endswith(" 1")
 

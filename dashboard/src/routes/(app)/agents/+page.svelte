@@ -28,9 +28,18 @@
 		<div>
 			<label class="label" for="template_name">Industry pack</label>
 			<select class="input" id="template_name" name="template_name" required>
-				{#each data.templates as t (t.name)}
-					<option value={t.name}>{t.industry} — {t.product_name}</option>
-				{/each}
+				<optgroup label="Built-in packs">
+					{#each data.templates as t (t.name)}
+						<option value={t.name}>{t.industry} — {t.product_name}</option>
+					{/each}
+				</optgroup>
+				{#if data.packs.length > 0}
+					<optgroup label="Your packs">
+						{#each data.packs as p (p.name)}
+							<option value={p.name}>{p.industry} — {p.product_name}</option>
+						{/each}
+					</optgroup>
+				{/if}
 			</select>
 		</div>
 		<button class="btn" type="submit">Create</button>

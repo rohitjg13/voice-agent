@@ -10,6 +10,7 @@ from orchestrator.routers.dashboard import (
     campaigns,
     knowledge,
     orgs,
+    packs,
     phone_numbers,
 )
 
@@ -22,3 +23,4 @@ router.include_router(analytics.router)
 router.include_router(campaigns.router)
 router.include_router(phone_numbers.router)
 router.include_router(billing.router)
+router.include_router(packs.router)
