@@ -15,7 +15,7 @@
 
 <svelte:head><title>Call {c.customer_number ?? ''} — Coldline</title></svelte:head>
 
-<a class="font-mono text-[12px] text-muted hover:text-phos" href="/calls">← call log</a>
+<a class="font-mono text-[12px] text-muted hover:text-phos transition-colors" href="/calls">← call log</a>
 <div class="mt-1 flex items-baseline gap-4">
 	<h1 class="text-2xl font-bold tracking-tight">{c.customer_number ?? 'Unknown number'}</h1>
 	{#if c.booked}<span class="font-mono text-[12px] uppercase tracking-widest text-phos">● booked</span>{/if}
@@ -51,8 +51,7 @@
 							{turn.role === 'assistant' ? 'text-phos' : 'text-amber'}">
 							{turn.role === 'assistant' ? 'agent' : 'prospect'}
 						</span>
-						<p class="max-w-[85%] rounded-lg border px-3 py-2 text-sm
-							{turn.role === 'assistant' ? 'border-phos-dim/40 bg-phos/5' : 'border-line bg-panel2'}">
+						<p class="max-w-[85%] text-sm {turn.role === 'assistant' ? 'bubble-bot' : 'bubble-user'}">
 							{turn.content}
 						</p>
 					</div>

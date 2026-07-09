@@ -8,7 +8,6 @@
 	const c = $derived(data.agent.config);
 
 	const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-	// existing objections + one blank row for adding
 	const objRows = $derived([
 		...c.objections,
 		{ id: '', label: '', patterns: [], responses: [], max_strikes: 3 }
@@ -19,7 +18,7 @@
 
 <div class="flex flex-wrap items-center justify-between gap-4">
 	<div>
-		<a class="font-mono text-[12px] text-muted hover:text-phos" href="/agents">← agents</a>
+		<a class="font-mono text-[12px] text-muted hover:text-phos transition-colors" href="/agents">← agents</a>
 		<h1 class="mt-1 text-2xl font-bold tracking-tight">{a.name}</h1>
 		<div class="mt-1 font-mono text-[12px] text-muted">
 			pack: {a.template_name ?? 'custom'} ·
@@ -35,17 +34,16 @@
 </div>
 
 {#if form?.error}
-	<p class="mt-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{form.error}</p>
+	<div class="flash-danger mt-4">{form.error}</div>
 {:else if form?.saved}
-	<p class="mt-4 rounded-md border border-phos-dim bg-phos/10 px-3 py-2 text-sm text-phos">Saved.</p>
+	<div class="flash-success mt-4">Saved.</div>
 {:else if form?.published}
-	<p class="mt-4 rounded-md border border-phos-dim bg-phos/10 px-3 py-2 text-sm text-phos">Published to Vapi.</p>
+	<div class="flash-success mt-4">Published to Vapi.</div>
 {/if}
 
 <form method="POST" action="?/save" use:enhance class="mt-6 space-y-6">
-	<!-- Persona & product -->
 	<section class="card p-6">
-		<h2 class="mb-4 font-mono text-[12px] uppercase tracking-[0.2em] text-phos">01 / persona &amp; product</h2>
+		<h2 class="section-h">01 / persona &amp; product</h2>
 		<div class="grid gap-4 sm:grid-cols-2">
 			<div>
 				<label class="label" for="agent_name">Agent persona name</label>
@@ -70,9 +68,8 @@
 		</div>
 	</section>
 
-	<!-- Scripts -->
 	<section class="card p-6">
-		<h2 class="mb-4 font-mono text-[12px] uppercase tracking-[0.2em] text-phos">02 / call scripts</h2>
+		<h2 class="section-h">02 / call scripts</h2>
 		<div class="grid gap-4">
 			<div>
 				<label class="label" for="system_prompt_template">System prompt template (Jinja2)</label>
@@ -107,13 +104,12 @@
 		</div>
 	</section>
 
-	<!-- Objections -->
 	<section class="card p-6">
-		<h2 class="mb-1 font-mono text-[12px] uppercase tracking-[0.2em] text-phos">03 / objection playbook</h2>
+		<h2 class="section-h mb-1">03 / objection playbook</h2>
 		<p class="mb-4 text-sm text-muted">Escalating responses — one per strike. Blank label = row ignored.</p>
 		<div class="space-y-4">
 			{#each objRows as obj, i (i)}
-				<div class="rounded-md border border-line bg-bg/60 p-4">
+				<div class="objection-row">
 					<input type="hidden" name="obj_{i}_id" value={obj.id} />
 					<div class="grid gap-3 sm:grid-cols-[2fr_3fr_90px_70px]">
 						<div>
@@ -145,9 +141,8 @@
 		</div>
 	</section>
 
-	<!-- Compliance & scheduling -->
 	<section class="card p-6">
-		<h2 class="mb-4 font-mono text-[12px] uppercase tracking-[0.2em] text-phos">04 / compliance &amp; scheduling</h2>
+		<h2 class="section-h">04 / compliance &amp; scheduling</h2>
 		<div class="grid gap-4 sm:grid-cols-2">
 			<div>
 				<label class="label" for="never_say">Never say (one per line)</label>
@@ -165,8 +160,7 @@
 				<span class="label">Working days</span>
 				<div class="flex flex-wrap gap-2">
 					{#each DAYS as day (day)}
-						<label class="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 font-mono text-[12px]
-							has-checked:border-phos-dim has-checked:text-phos">
+						<label class="day-chip">
 							<input class="sr-only" type="checkbox" name="working_days" value={day}
 								checked={c.scheduling.working_days.includes(day)} />
 							{day.slice(0, 3)}
@@ -187,14 +181,13 @@
 		</div>
 	</section>
 
-	<div class="sticky bottom-4 flex justify-end">
-		<button class="btn shadow-lg shadow-black/40" type="submit">Save configuration</button>
+	<div class="sticky-bar">
+		<button class="btn" type="submit">Save configuration</button>
 	</div>
 </form>
 
-<!-- Knowledge -->
 <section class="card mt-6 p-6">
-	<h2 class="mb-1 font-mono text-[12px] uppercase tracking-[0.2em] text-phos">05 / knowledge base</h2>
+	<h2 class="section-h mb-1">05 / knowledge base</h2>
 	<p class="mb-4 text-sm text-muted">
 		Markdown or text files, chunked and embedded — grounds objection handling for this agent.
 	</p>
@@ -202,9 +195,9 @@
 		<input class="input max-w-xs" type="file" name="file" accept=".md,.txt" required />
 		<button class="btn-ghost" type="submit">Upload</button>
 	</form>
-	<ul class="mt-4 divide-y divide-line">
+	<ul class="mt-4 space-y-1">
 		{#each data.knowledge as k (k.source)}
-			<li class="flex items-center justify-between py-2.5">
+			<li class="flex items-center justify-between py-2.5 sep-y">
 				<span class="font-mono text-sm">{k.source}</span>
 				<div class="flex items-center gap-4">
 					<span class="font-mono text-[12px] text-muted">{k.chunks} chunks</span>

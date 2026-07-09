@@ -13,12 +13,11 @@
 
 <h1 class="text-2xl font-bold tracking-tight">Call log</h1>
 
-<div class="mt-4 flex gap-2">
+<div class="mt-4 flex flex-wrap gap-2">
 	{#each filters as f (f)}
 		<a
 			href={f === 'all' ? '/calls' : `/calls?outcome=${f}`}
-			class="rounded-md border px-3 py-1.5 font-mono text-[12px] transition
-				{(data.outcome ?? 'all') === f ? 'border-phos text-phos' : 'border-line text-muted hover:text-ink'}"
+			class="tab-pill {(data.outcome ?? 'all') === f ? 'tab-pill-active' : 'tab-pill-inactive'}"
 		>
 			{f}
 		</a>
@@ -35,7 +34,7 @@
 		</thead>
 		<tbody>
 			{#each data.calls as c (c.id)}
-				<tr class="cursor-pointer hover:bg-panel2" onclick={() => (location.href = `/calls/${c.id}`)}>
+				<tr class="cursor-pointer row-hover" onclick={() => (location.href = `/calls/${c.id}`)}>
 					<td class="td font-mono"><a href="/calls/{c.id}" class="hover:text-phos">{c.customer_number ?? '—'}</a></td>
 					<td class="td font-mono text-[12px] {c.booked ? 'text-phos' : c.outcome === 'failed' ? 'text-danger' : 'text-muted'}">{c.outcome ?? '—'}</td>
 					<td class="td font-mono text-[12px] text-muted">{c.stage_reached ?? '—'}</td>

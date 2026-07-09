@@ -17,7 +17,7 @@
 		</thead>
 		<tbody>
 			{#each data.appointments as a (a.id)}
-				<tr class="hover:bg-panel2">
+				<tr class="row-hover">
 					<td class="td">{a.prospect_name ?? '—'}</td>
 					<td class="td font-mono text-[13px]">{a.prospect_email ?? '—'}</td>
 					<td class="td">{a.requested_time ?? '—'}</td>

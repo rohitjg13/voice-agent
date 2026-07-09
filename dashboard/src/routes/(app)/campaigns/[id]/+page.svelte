@@ -7,7 +7,6 @@
 	const c = $derived(data.campaign);
 	const pct = $derived(c.total_leads ? Math.round((c.done_leads / c.total_leads) * 100) : 0);
 
-	// poll while the dialer is working
 	$effect(() => {
 		if (c.status !== 'running') return;
 		const t = setInterval(() => invalidateAll(), 10_000);
@@ -26,7 +25,7 @@
 
 <svelte:head><title>{c.name} — Coldline</title></svelte:head>
 
-<a class="font-mono text-[12px] text-muted hover:text-phos" href="/campaigns">← campaigns</a>
+<a class="font-mono text-[12px] text-muted hover:text-phos transition-colors" href="/campaigns">← campaigns</a>
 <div class="mt-1 flex flex-wrap items-center justify-between gap-4">
 	<div class="flex items-center gap-3">
 		<h1 class="text-2xl font-bold tracking-tight">{c.name}</h1>
@@ -50,14 +49,14 @@
 </div>
 
 {#if form?.error}
-	<p class="mt-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{form.error}</p>
+	<div class="flash-danger mt-4">{form.error}</div>
 {/if}
 {#if form?.report}
-	<p class="mt-4 rounded-md border border-phos-dim bg-phos/10 px-3 py-2 text-sm text-phos">
+	<div class="flash-success mt-4">
 		Imported {form.report.imported} leads{form.report.skipped.length
 			? ` · ${form.report.skipped.length} skipped`
 			: ''}.
-	</p>
+	</div>
 	{#if form.report.skipped.length}
 		<details class="mt-2 text-sm text-muted">
 			<summary class="cursor-pointer font-mono text-[12px]">skipped rows</summary>
@@ -77,8 +76,8 @@
 		</span>
 		<span class="font-mono text-[12px] text-phos">{pct}%</span>
 	</div>
-	<div class="mt-2 h-2 overflow-hidden rounded-full bg-line">
-		<div class="h-full bg-phos transition-all" style="width: {pct}%"></div>
+	<div class="mt-2 h-2 overflow-hidden rounded-full" style="box-shadow: var(--shadow-inset-a), var(--shadow-inset-b);">
+		<div class="h-full bg-phos transition-all rounded-full" style="width: {pct}%"></div>
 	</div>
 </div>
 
@@ -106,7 +105,7 @@
 		</thead>
 		<tbody>
 			{#each c.leads as lead (lead.id)}
-				<tr class="hover:bg-panel2">
+				<tr class="row-hover">
 					<td class="td">{lead.name ?? '—'}{lead.company ? ` · ${lead.company}` : ''}</td>
 					<td class="td font-mono">{lead.phone_e164}</td>
 					<td class="td font-mono text-[12px] {statusColor[lead.status] ?? 'text-muted'}">

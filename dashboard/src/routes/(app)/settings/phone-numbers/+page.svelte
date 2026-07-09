@@ -10,9 +10,9 @@
 <p class="mt-1 text-sm text-muted">Outbound caller IDs provisioned through Vapi.</p>
 
 {#if form?.error}
-	<p class="mt-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{form.error}</p>
+	<div class="flash-danger mt-4">{form.error}</div>
 {:else if form?.bought}
-	<p class="mt-4 rounded-md border border-phos-dim bg-phos/10 px-3 py-2 text-sm text-phos">Number provisioned.</p>
+	<div class="flash-success mt-4">Number provisioned.</div>
 {/if}
 
 <form method="POST" action="?/buy" use:enhance class="card mt-6 flex items-end gap-4 p-5">
@@ -30,7 +30,7 @@
 		</thead>
 		<tbody>
 			{#each data.numbers as n (n.id)}
-				<tr class="hover:bg-panel2">
+				<tr class="row-hover">
 					<td class="td font-mono">{n.e164}</td>
 					<td class="td font-mono text-[12px] text-phos">{n.status}</td>
 					<td class="td text-muted">{n.created_at ? new Date(n.created_at).toLocaleDateString() : '—'}</td>

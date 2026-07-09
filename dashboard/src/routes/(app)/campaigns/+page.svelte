@@ -16,7 +16,7 @@
 </div>
 
 {#if form?.error}
-	<p class="mt-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{form.error}</p>
+	<div class="flash-danger mt-4">{form.error}</div>
 {/if}
 
 {#if creating}
@@ -54,7 +54,7 @@
 <div class="mt-6 space-y-4">
 	{#each data.campaigns as c (c.id)}
 		{@const pct = c.total_leads ? Math.round((c.done_leads / c.total_leads) * 100) : 0}
-		<a href="/campaigns/{c.id}" class="card block p-5 transition hover:border-phos-dim">
+		<a href="/campaigns/{c.id}" class="card block p-5 transition-all duration-200">
 			<div class="flex items-center justify-between">
 				<span class="text-lg font-semibold">{c.name}</span>
 				<span class="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest
@@ -63,8 +63,8 @@
 					{c.status}
 				</span>
 			</div>
-			<div class="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
-				<div class="h-full bg-phos transition-all" style="width: {pct}%"></div>
+			<div class="mt-3 h-1.5 overflow-hidden rounded-full" style="box-shadow: var(--shadow-inset-a), var(--shadow-inset-b);">
+				<div class="h-full bg-phos transition-all rounded-full" style="width: {pct}%"></div>
 			</div>
 			<div class="mt-2 font-mono text-[12px] text-muted">
 				{c.done_leads}/{c.total_leads} leads done · {c.calling_leads} on the line

@@ -17,13 +17,13 @@
 		<h2 class="font-mono text-[11px] uppercase tracking-widest text-muted">Your packs</h2>
 		<div class="mt-3 grid gap-4 lg:grid-cols-2">
 			{#each data.packs as p (p.name)}
-				<div class="card group flex items-center justify-between p-5 transition hover:border-phos-dim">
-					<a href="/packs/{p.name}" class="min-w-0 flex-1">
+				<a href="/packs/{p.name}" class="card group flex items-center justify-between p-5">
+					<div class="min-w-0 flex-1">
 						<div class="font-mono text-[11px] uppercase tracking-widest text-muted">{p.industry}</div>
 						<div class="mt-1 text-lg font-semibold group-hover:text-phos">{p.product_name}</div>
 						<div class="mt-0.5 text-xs text-muted">Persona: {p.agent_name} · v{p.version}</div>
-					</a>
-				</div>
+					</div>
+				</a>
 			{/each}
 		</div>
 	</div>
@@ -36,7 +36,7 @@
 			<div class="card p-5">
 				<div class="flex items-center gap-2">
 					<div class="font-mono text-[11px] uppercase tracking-widest text-muted">{t.industry}</div>
-					<span class="rounded-full border border-line px-2 py-0.5 font-mono text-[10px] text-muted">built-in</span>
+					<span class="pill">built-in</span>
 				</div>
 				<div class="mt-1 text-lg font-semibold">{t.product_name}</div>
 				<div class="mt-0.5 text-xs text-muted">Persona: {t.agent_name} · v{t.version}</div>

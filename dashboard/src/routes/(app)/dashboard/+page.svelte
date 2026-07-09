@@ -45,8 +45,8 @@
 					{@const w = 600 / data.timeseries.length}
 					{@const h = (d.calls / maxCalls) * 140}
 					{@const hb = (d.booked / maxCalls) * 140}
-					<rect x={i * w + 2} y={150 - h} width={Math.max(2, w - 4)} height={h} fill="#233129" rx="2" />
-					<rect x={i * w + 2} y={150 - hb} width={Math.max(2, w - 4)} height={hb} fill="#3ce381" rx="2" />
+					<rect x={i * w + 2} y={150 - h} width={Math.max(2, w - 4)} height={h} fill="#2e323b" rx="2" />
+					<rect x={i * w + 2} y={150 - hb} width={Math.max(2, w - 4)} height={hb} fill="#6fc991" rx="2" />
 				{/each}
 			</svg>
 		{/if}
@@ -81,7 +81,7 @@
 		</thead>
 		<tbody>
 			{#each data.recent as c (c.id)}
-				<tr class="hover:bg-panel2">
+				<tr class="row-hover">
 					<td class="td font-mono">{c.customer_number ?? '—'}</td>
 					<td class="td">
 						<span class="font-mono text-[12px] {c.outcome === 'booked' ? 'text-phos' : c.outcome === 'failed' ? 'text-danger' : 'text-muted'}">

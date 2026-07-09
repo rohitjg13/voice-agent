@@ -16,7 +16,7 @@
 </div>
 
 {#if form?.error}
-	<p class="mt-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{form.error}</p>
+	<div class="flash-danger mt-4">{form.error}</div>
 {/if}
 
 {#if creating}
@@ -48,7 +48,9 @@
 
 <div class="mt-6 grid gap-4 lg:grid-cols-2">
 	{#each data.agents as a (a.id)}
-		<a href="/agents/{a.id}" class="card group p-5 transition hover:border-phos-dim">
+		<a href="/agents/{a.id}" class="card group p-5 transition-all duration-200"
+			style="hover:shadow-[6px_6px_18px_hsl(222_13%_5%/0.8),_-4px_-4px_12px_hsl(222_13%_15%/0.4)]"
+		>
 			<div class="flex items-center justify-between">
 				<span class="text-lg font-semibold group-hover:text-phos">{a.name}</span>
 				<span class="font-mono text-[11px] uppercase tracking-widest

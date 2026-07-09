@@ -2,7 +2,7 @@
 	let { children } = $props();
 </script>
 
-<div class="flex min-h-screen items-center justify-center px-4">
+<div class="flex min-h-screen items-center justify-center px-4 transition-colors duration-300">
 	<div class="w-full max-w-sm">
 		<div class="mb-8 text-center">
 			<div class="font-mono text-[11px] uppercase tracking-[0.3em] text-phos">

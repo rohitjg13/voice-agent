@@ -6,7 +6,7 @@
 
 <svelte:head><title>Set up — Coldline</title></svelte:head>
 
-<div class="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-4 py-12">
+<div class="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-4 py-12 transition-colors duration-300">
 	<div class="mb-8">
 		<div class="font-mono text-[11px] uppercase tracking-[0.3em] text-phos">setup / 1 of 1</div>
 		<h1 class="mt-2 text-3xl font-bold tracking-tight">Set up your workspace</h1>
@@ -17,9 +17,7 @@
 
 	<form method="POST" use:enhance class="card space-y-5 p-6">
 		{#if form?.error}
-			<p class="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-				{form.error}
-			</p>
+			<div class="flash-danger">{form.error}</div>
 		{/if}
 		<div>
 			<label class="label" for="org_name">Company name</label>
@@ -34,8 +32,7 @@
 			<div class="grid gap-3 sm:grid-cols-2">
 				{#each data.templates as t (t.name)}
 					<label
-						class="card flex cursor-pointer flex-col gap-1 border-line p-4 transition
-							has-checked:border-phos has-checked:bg-phos/5"
+						class="card flex cursor-pointer flex-col gap-1 p-4 has-checked:shadow-[var(--shadow-inset-a),var(--shadow-inset-b)]"
 					>
 						<input class="sr-only" type="radio" name="template" value={t.name} />
 						<span class="font-mono text-[11px] uppercase tracking-widest text-muted">{t.industry}</span>

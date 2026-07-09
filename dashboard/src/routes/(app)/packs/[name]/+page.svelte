@@ -3,7 +3,6 @@
 
 	let { data, form } = $props();
 
-	const pack = $derived(data.pack);
 	const c = $derived(data.pack);
 
 	const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -17,7 +16,7 @@
 
 <div class="flex flex-wrap items-center justify-between gap-4">
 	<div>
-		<a class="font-mono text-[12px] text-muted hover:text-phos" href="/packs">← packs</a>
+		<a class="font-mono text-[12px] text-muted hover:text-phos transition-colors" href="/packs">← packs</a>
 		<h1 class="mt-1 text-2xl font-bold tracking-tight">{c.name}</h1>
 		<div class="mt-1 font-mono text-[12px] text-muted">
 			industry: {c.industry} · v{c.version}
@@ -25,7 +24,7 @@
 	</div>
 	<form method="POST" action="?/delete" use:enhance>
 		<button
-			class="btn-danger font-mono text-[13px]"
+			class="btn-danger"
 			type="submit"
 			onclick={(e: MouseEvent) => { if (!confirm('Delete this pack? Agents using it will not be affected.')) e.preventDefault(); }}
 		>
@@ -35,15 +34,14 @@
 </div>
 
 {#if form?.error}
-	<p class="mt-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{form.error}</p>
+	<div class="flash-danger mt-4">{form.error}</div>
 {:else if form?.saved}
-	<p class="mt-4 rounded-md border border-phos-dim bg-phos/10 px-3 py-2 text-sm text-phos">Saved.</p>
+	<div class="flash-success mt-4">Saved.</div>
 {/if}
 
 <form method="POST" action="?/save" use:enhance class="mt-6 space-y-6">
-	<!-- Persona & product -->
 	<section class="card p-6">
-		<h2 class="mb-4 font-mono text-[12px] uppercase tracking-[0.2em] text-phos">01 / persona &amp; product</h2>
+		<h2 class="section-h">01 / persona &amp; product</h2>
 		<div class="grid gap-4 sm:grid-cols-2">
 			<div>
 				<label class="label" for="agent_name">Agent persona name</label>
@@ -68,9 +66,8 @@
 		</div>
 	</section>
 
-	<!-- Scripts -->
 	<section class="card p-6">
-		<h2 class="mb-4 font-mono text-[12px] uppercase tracking-[0.2em] text-phos">02 / call scripts</h2>
+		<h2 class="section-h">02 / call scripts</h2>
 		<div class="grid gap-4">
 			<div>
 				<label class="label" for="system_prompt_template">System prompt template (Jinja2)</label>
@@ -105,13 +102,12 @@
 		</div>
 	</section>
 
-	<!-- Objections -->
 	<section class="card p-6">
-		<h2 class="mb-1 font-mono text-[12px] uppercase tracking-[0.2em] text-phos">03 / objection playbook</h2>
+		<h2 class="section-h mb-1">03 / objection playbook</h2>
 		<p class="mb-4 text-sm text-muted">Escalating responses — one per strike. Blank label = row ignored.</p>
 		<div class="space-y-4">
 			{#each objRows as obj, i (i)}
-				<div class="rounded-md border border-line bg-bg/60 p-4">
+				<div class="objection-row">
 					<input type="hidden" name="obj_{i}_id" value={obj.id} />
 					<div class="grid gap-3 sm:grid-cols-[2fr_3fr_90px_70px]">
 						<div>
@@ -143,9 +139,8 @@
 		</div>
 	</section>
 
-	<!-- Compliance & scheduling -->
 	<section class="card p-6">
-		<h2 class="mb-4 font-mono text-[12px] uppercase tracking-[0.2em] text-phos">04 / compliance &amp; scheduling</h2>
+		<h2 class="section-h">04 / compliance &amp; scheduling</h2>
 		<div class="grid gap-4 sm:grid-cols-2">
 			<div>
 				<label class="label" for="never_say">Never say (one per line)</label>
@@ -163,8 +158,7 @@
 				<span class="label">Working days</span>
 				<div class="flex flex-wrap gap-2">
 					{#each DAYS as day (day)}
-						<label class="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 font-mono text-[12px]
-							has-checked:border-phos-dim has-checked:text-phos">
+						<label class="day-chip">
 							<input class="sr-only" type="checkbox" name="working_days" value={day}
 								checked={c.scheduling.working_days.includes(day)} />
 							{day.slice(0, 3)}
@@ -185,7 +179,7 @@
 		</div>
 	</section>
 
-	<div class="sticky bottom-4 flex justify-end">
-		<button class="btn shadow-lg shadow-black/40" type="submit">Save configuration</button>
+	<div class="sticky-bar">
+		<button class="btn" type="submit">Save configuration</button>
 	</div>
 </form>

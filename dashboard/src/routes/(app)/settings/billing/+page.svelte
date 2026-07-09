@@ -34,9 +34,9 @@
 </p>
 
 {#if form?.error}
-	<p class="mt-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{form.error}</p>
+	<div class="flash-danger mt-4">{form.error}</div>
 {:else if form?.upgraded}
-	<p class="mt-4 rounded-md border border-phos-dim bg-phos/10 px-3 py-2 text-sm text-phos">Plan updated.</p>
+	<div class="flash-success mt-4">Plan updated.</div>
 {/if}
 
 {#if sub}
@@ -57,9 +57,9 @@
 							{m.used}/{m.max}
 						</span>
 					</div>
-					<div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-line">
+					<div class="mt-1.5 h-1.5 overflow-hidden rounded-full" style="box-shadow: var(--shadow-inset-a), var(--shadow-inset-b);">
 						<div
-							class="h-full {pct >= 100 ? 'bg-danger' : pct >= 80 ? 'bg-amber' : 'bg-phos'}"
+							class="h-full rounded-full {pct >= 100 ? 'bg-danger' : pct >= 80 ? 'bg-amber' : 'bg-phos'}"
 							style="width: {pct}%"
 						></div>
 					</div>
@@ -72,7 +72,7 @@
 <div class="mt-6 grid gap-4 lg:grid-cols-3">
 	{#each data.plans as plan (plan.id)}
 		{@const current = sub?.plan_id === plan.id}
-		<div class="card flex flex-col p-6 {current ? 'border-phos' : ''}">
+		<div class="card flex flex-col p-6">
 			<div class="flex items-baseline justify-between">
 				<h3 class="text-lg font-semibold">{plan.name}</h3>
 				<span class="font-mono text-phos">{price(plan.price_cents)}</span>
