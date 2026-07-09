@@ -19,8 +19,8 @@ async def save_appointment(appt: Appointment) -> None:
             """
             INSERT INTO appointments
                 (call_id, pack_name, booked, prospect_name, prospect_email,
-                 requested_time, summary, transcript)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                 requested_time, summary, transcript, org_id, agent_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             ON CONFLICT (call_id) DO UPDATE
             SET booked         = EXCLUDED.booked,
                 prospect_name  = EXCLUDED.prospect_name,
@@ -28,6 +28,8 @@ async def save_appointment(appt: Appointment) -> None:
                 requested_time = EXCLUDED.requested_time,
                 summary        = EXCLUDED.summary,
                 transcript     = EXCLUDED.transcript,
+                org_id         = EXCLUDED.org_id,
+                agent_id       = EXCLUDED.agent_id,
                 updated_at     = NOW()
             """,
             appt.call_id,
@@ -38,5 +40,7 @@ async def save_appointment(appt: Appointment) -> None:
             appt.requested_time,
             appt.summary,
             appt.transcript,
+            appt.org_id,
+            appt.agent_id,
         )
     logger.info("appointment_saved", call_id=appt.call_id, booked=appt.booked)

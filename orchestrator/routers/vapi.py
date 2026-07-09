@@ -4,6 +4,7 @@ import re
 import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
+from datetime import datetime
 from typing import Any
 
 import anthropic
@@ -12,12 +13,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from orchestrator.config import settings
+from orchestrator.models.call_record import CallRecord
 from orchestrator.models.call_state import CallState, ConversationState, Intent
 from orchestrator.models.vapi import VapiMessage, VapiRequest
 from orchestrator.services.appointment_extractor import extract_appointment
 from orchestrator.services.appointment_store import save_appointment
 from orchestrator.services.auth import verify_llm_auth, verify_server_auth
+from orchestrator.services.call_record_store import link_lead, save_call_record
 from orchestrator.services.call_state_store import (
+    get_call_state,
     get_or_create_call_state,
     save_call_state,
 )
@@ -37,8 +41,8 @@ from orchestrator.services.prompt_composer import (
 )
 from orchestrator.services.schedule_extractor import extract_schedule_info
 from orchestrator.services.state_machine import transition
+from orchestrator.services.tenant_resolver import ResolvedAgent, resolve_agent
 from packs._schema.pack import IndustryPack
-from packs.pack_loader import load_pack
 
 logger = structlog.get_logger()
 
@@ -195,7 +199,8 @@ async def vapi_llm(request: VapiRequest) -> StreamingResponse:
         # Fail before the stream starts — an exception mid-SSE can't become a status code
         raise HTTPException(status_code=503, detail="Generation model not configured")
 
-    pack = load_pack(settings.active_pack)
+    resolved = await resolve_agent(request.call)
+    pack = resolved.pack
 
     # ── DNC pre-flight ────────────────────────────────────────────────────────
     customer = (request.call or {}).get("customer")
@@ -209,7 +214,9 @@ async def vapi_llm(request: VapiRequest) -> StreamingResponse:
     call_id = _sanitize_call_id((request.call or {}).get("id"))
 
     # Fetch or initialise per-call state
-    call_state = await get_or_create_call_state(call_id, pack.name)
+    call_state = await get_or_create_call_state(
+        call_id, pack.name, org_id=resolved.org_id, agent_id=resolved.agent_id
+    )
 
     last_user_msg = next(
         (m.content for m in reversed(request.messages) if m.role == "user"),
@@ -325,7 +332,81 @@ async def vapi_server(payload: dict[str, Any]) -> dict[str, Any]:
         logger.warning("end_of_call_no_messages", call_id=call_id)
         return {"status": "no-messages"}
 
-    pack = load_pack(settings.active_pack)
+    resolved = await resolve_agent(call if isinstance(call, dict) else None)
+    pack = resolved.pack
     appt = await extract_appointment(call_id, pack.name, transcript_messages)
+    appt.org_id = resolved.org_id
+    appt.agent_id = resolved.agent_id
     await save_appointment(appt)
+
+    record = await _build_call_record(
+        message, call, call_id, resolved, appt.booked, transcript_messages
+    )
+    await save_call_record(record)
+    await link_lead(call_id, record.outcome)
     return {"status": "saved", "booked": appt.booked}
+
+
+def _parse_ts(raw: object) -> datetime | None:
+    if isinstance(raw, str):
+        try:
+            return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    return None
+
+
+def _derive_outcome(ended_reason: str | None, booked: bool) -> str:
+    if booked:
+        return "booked"
+    reason = (ended_reason or "").lower()
+    if "no-answer" in reason or "busy" in reason:
+        return "no_answer"
+    if "voicemail" in reason:
+        return "voicemail"
+    if "error" in reason or "failed" in reason:
+        return "failed"
+    return "completed"
+
+
+async def _build_call_record(
+    message: dict[str, Any],
+    call: object,
+    call_id: str,
+    resolved: ResolvedAgent,
+    booked: bool,
+    transcript: list[dict[str, str]],
+) -> CallRecord:
+    """Field-by-field defensive parse — a malformed report must not 500."""
+    try:
+        state = await get_call_state(call_id)
+    except Exception as exc:
+        # State enriches the record (stage/objections); a dead Redis must not
+        # cost us the call record itself.
+        logger.warning("call_state_fetch_failed", call_id=call_id, error=str(exc))
+        state = None
+    customer = call.get("customer") if isinstance(call, dict) else None
+    number = customer.get("number") if isinstance(customer, dict) else None
+    duration = message.get("durationSeconds")
+    cost = message.get("cost")
+    ended_reason = message.get("endedReason")
+    summary = message.get("summary")
+    return CallRecord(
+        vapi_call_id=call_id,
+        org_id=resolved.org_id or (state.org_id if state else None),
+        agent_id=resolved.agent_id or (state.agent_id if state else None),
+        customer_number=number if isinstance(number, str) else None,
+        started_at=_parse_ts(message.get("startedAt")),
+        ended_at=_parse_ts(message.get("endedAt")),
+        duration_seconds=int(duration) if isinstance(duration, int | float) else None,
+        ended_reason=ended_reason if isinstance(ended_reason, str) else None,
+        stage_reached=state.stage.value if state else None,
+        outcome=_derive_outcome(
+            ended_reason if isinstance(ended_reason, str) else None, booked
+        ),
+        booked=booked,
+        objections=sorted(state.objection_strikes) if state else [],
+        transcript=transcript,
+        summary=summary if isinstance(summary, str) else None,
+        cost_usd=float(cost) if isinstance(cost, int | float) else None,
+    )

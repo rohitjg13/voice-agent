@@ -20,6 +20,10 @@ _HERMETIC_DEFAULTS = {
     "database_url": "",
     "vapi_llm_secret": "",
     "vapi_server_secret": "",
+    "supabase_url": "",
+    "supabase_jwt_secret": "",
+    "vapi_api_key": "",
+    "public_base_url": "",
     "environment": "development",
     "allow_insecure_public_endpoints": False,
 }

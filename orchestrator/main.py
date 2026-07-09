@@ -1,5 +1,6 @@
+import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 import structlog
 from fastapi import FastAPI
@@ -7,7 +8,8 @@ from fastapi import FastAPI
 from orchestrator import db
 from orchestrator.config import settings
 from orchestrator.middleware import BodySizeLimitMiddleware
-from orchestrator.routers import vapi
+from orchestrator.routers import dashboard, vapi
+from orchestrator.services import dialer
 
 logger = structlog.get_logger()
 
@@ -57,7 +59,14 @@ def enforce_auth_config() -> None:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     enforce_auth_config()
     await db.init_pool()
+    dialer_task: asyncio.Task[None] | None = None
+    if settings.vapi_api_key and db.get_pool() is not None:
+        dialer_task = asyncio.create_task(dialer.dialer_loop())
     yield
+    if dialer_task:
+        dialer_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await dialer_task
     await db.close_pool()
 
 
@@ -74,6 +83,7 @@ app = FastAPI(
 app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_bytes)
 
 app.include_router(vapi.router)
+app.include_router(dashboard.router)
 
 
 @app.get("/health")

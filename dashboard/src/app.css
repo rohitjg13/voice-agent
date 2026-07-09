@@ -1,0 +1,543 @@
+@import 'tailwindcss';
+
+/* ── Neumorphic design system (light + dark) ───────────────────────────────
+   Surfaces share the same background color; depth is created purely through
+   soft box-shadows (light source from top-left). No hard borders on cards,
+   inputs, or buttons — the material feels continuous and tactile.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root,
+[data-theme='dark'] {
+	--color-bg: #20232a;
+	--color-panel: #20232a;
+	--color-panel2: #282c34;
+	--color-line: #2e323b;
+	--color-ink: #e1e5ec;
+	--color-muted: #7f8596;
+	--color-phos: #6fc991;
+	--color-phos-dim: #448c60;
+	--color-amber: #d4a85c;
+	--color-danger: #d97a72;
+
+	--shadow-card-a: 6px 6px 14px hsl(222 13% 7% / 0.7);
+	--shadow-card-b: -6px -6px 14px hsl(222 13% 15% / 0.5);
+	--shadow-card-hover-a: 8px 8px 20px hsl(222 13% 5% / 0.8);
+	--shadow-card-hover-b: -5px -5px 14px hsl(222 13% 15% / 0.5);
+
+	--shadow-inset-a: inset 3px 3px 6px hsl(222 13% 6% / 0.6);
+	--shadow-inset-b: inset -3px -3px 6px hsl(222 13% 16% / 0.4);
+
+	--shadow-btn-a: 4px 4px 10px hsl(222 13% 7% / 0.6);
+	--shadow-btn-b: -4px -4px 10px hsl(222 13% 15% / 0.4);
+	--shadow-btn-active-a: inset 4px 4px 8px hsl(145 35% 25% / 0.5);
+	--shadow-btn-active-b: inset -4px -4px 8px hsl(145 35% 60% / 0.3);
+
+	--shadow-ghost-a: 4px 4px 10px hsl(222 13% 7% / 0.6);
+	--shadow-ghost-b: -4px -4px 10px hsl(222 13% 15% / 0.4);
+	--shadow-ghost-active-a: inset 4px 4px 8px hsl(222 13% 7% / 0.5);
+	--shadow-ghost-active-b: inset -4px -4px 8px hsl(222 13% 15% / 0.3);
+
+	--shadow-danger-a: 3px 3px 7px hsl(222 13% 7% / 0.5);
+	--shadow-danger-b: -3px -3px 7px hsl(222 13% 15% / 0.3);
+
+	--shadow-flash-success-a: inset 3px 3px 6px hsl(145 35% 25% / 0.25);
+	--shadow-flash-success-b: inset -3px -3px 6px hsl(145 35% 45% / 0.1);
+	--shadow-flash-danger-a: inset 3px 3px 6px hsl(4 40% 30% / 0.25);
+	--shadow-flash-danger-b: inset -3px -3px 6px hsl(4 40% 45% / 0.1);
+
+	--shadow-pill-a: inset 1px 1px 3px hsl(222 13% 7% / 0.4);
+	--shadow-pill-b: inset -1px -1px 3px hsl(222 13% 16% / 0.2);
+	--shadow-tab-active-a: inset 3px 3px 6px hsl(222 13% 6% / 0.5);
+	--shadow-tab-active-b: inset -3px -3px 6px hsl(222 13% 16% / 0.3);
+
+	--shadow-obj-a: inset 3px 3px 7px hsl(222 13% 6% / 0.5);
+	--shadow-obj-b: inset -3px -3px 7px hsl(222 13% 16% / 0.25);
+
+	--shadow-day-a: 2px 2px 5px hsl(222 13% 7% / 0.4);
+	--shadow-day-b: -2px -2px 5px hsl(222 13% 16% / 0.2);
+	--shadow-day-checked-a: inset 2px 2px 5px hsl(222 13% 6% / 0.5);
+	--shadow-day-checked-b: inset -2px -2px 5px hsl(222 13% 16% / 0.3);
+
+	--shadow-sidebar: 4px 0 18px hsl(222 13% 5% / 0.6);
+	--shadow-nav-active-a: inset 3px 3px 7px hsl(222 13% 6% / 0.5);
+	--shadow-nav-active-b: inset -3px -3px 7px hsl(222 13% 16% / 0.3);
+	--shadow-footer-a: inset 2px 2px 5px hsl(222 13% 6% / 0.4);
+	--shadow-footer-b: inset -2px -2px 5px hsl(222 13% 16% / 0.2);
+
+	--shadow-bubble-bot-a: inset 3px 3px 6px hsl(145 35% 25% / 0.15);
+	--shadow-bubble-bot-b: inset -3px -3px 6px hsl(145 35% 45% / 0.08);
+	--shadow-bubble-user-a: inset 3px 3px 6px hsl(222 13% 6% / 0.4);
+	--shadow-bubble-user-b: inset -3px -3px 6px hsl(222 13% 16% / 0.2);
+
+	--shadow-row-hover-a: inset 2px 2px 5px hsl(222 13% 10% / 0.3);
+	--shadow-row-hover-b: inset -2px -2px 5px hsl(222 13% 18% / 0.15);
+
+	--shadow-bar: 6px 6px 18px hsl(222 13% 5% / 0.8), -4px -4px 12px hsl(222 13% 15% / 0.4);
+}
+
+[data-theme='light'] {
+	--color-bg: #eef0f4;
+	--color-panel: #eef0f4;
+	--color-panel2: #e2e5ea;
+	--color-line: #d1d5dc;
+	--color-ink: #1e2530;
+	--color-muted: #6b7385;
+	--color-phos: #2d7a4a;
+	--color-phos-dim: #459b66;
+	--color-amber: #9e6f20;
+	--color-danger: #b8453d;
+
+	--shadow-card-a: 6px 6px 14px hsl(222 12% 70% / 0.5);
+	--shadow-card-b: -6px -6px 14px hsl(222 15% 98% / 0.9);
+	--shadow-card-hover-a: 8px 8px 20px hsl(222 12% 68% / 0.55);
+	--shadow-card-hover-b: -5px -5px 14px hsl(222 15% 96% / 0.9);
+
+	--shadow-inset-a: inset 3px 3px 6px hsl(222 12% 72% / 0.4);
+	--shadow-inset-b: inset -3px -3px 6px hsl(222 15% 100% / 0.9);
+
+	--shadow-btn-a: 4px 4px 10px hsl(222 12% 70% / 0.5);
+	--shadow-btn-b: -4px -4px 10px hsl(222 15% 98% / 0.9);
+	--shadow-btn-active-a: inset 4px 4px 8px hsl(145 30% 30% / 0.25);
+	--shadow-btn-active-b: inset -4px -4px 8px hsl(145 30% 60% / 0.3);
+
+	--shadow-ghost-a: 4px 4px 10px hsl(222 12% 72% / 0.5);
+	--shadow-ghost-b: -4px -4px 10px hsl(222 15% 98% / 0.9);
+	--shadow-ghost-active-a: inset 4px 4px 8px hsl(222 12% 68% / 0.3);
+	--shadow-ghost-active-b: inset -4px -4px 8px hsl(222 15% 98% / 0.7);
+
+	--shadow-danger-a: 3px 3px 7px hsl(222 12% 72% / 0.4);
+	--shadow-danger-b: -3px -3px 7px hsl(222 15% 98% / 0.8);
+
+	--shadow-flash-success-a: inset 3px 3px 6px hsl(145 30% 35% / 0.15);
+	--shadow-flash-success-b: inset -3px -3px 6px hsl(145 30% 55% / 0.1);
+	--shadow-flash-danger-a: inset 3px 3px 6px hsl(4 35% 35% / 0.2);
+	--shadow-flash-danger-b: inset -3px -3px 6px hsl(4 35% 55% / 0.1);
+
+	--shadow-pill-a: inset 1px 1px 3px hsl(222 12% 72% / 0.3);
+	--shadow-pill-b: inset -1px -1px 3px hsl(222 15% 100% / 0.7);
+	--shadow-tab-active-a: inset 3px 3px 6px hsl(222 12% 70% / 0.35);
+	--shadow-tab-active-b: inset -3px -3px 6px hsl(222 15% 100% / 0.6);
+
+	--shadow-obj-a: inset 3px 3px 7px hsl(222 12% 72% / 0.35);
+	--shadow-obj-b: inset -3px -3px 7px hsl(222 15% 100% / 0.7);
+
+	--shadow-day-a: 2px 2px 5px hsl(222 12% 72% / 0.35);
+	--shadow-day-b: -2px -2px 5px hsl(222 15% 100% / 0.7);
+	--shadow-day-checked-a: inset 2px 2px 5px hsl(222 12% 70% / 0.35);
+	--shadow-day-checked-b: inset -2px -2px 5px hsl(222 15% 100% / 0.6);
+
+	--shadow-sidebar: 4px 0 18px hsl(222 12% 68% / 0.35);
+	--shadow-nav-active-a: inset 3px 3px 7px hsl(222 12% 68% / 0.3);
+	--shadow-nav-active-b: inset -3px -3px 7px hsl(222 15% 98% / 0.8);
+	--shadow-footer-a: inset 2px 2px 5px hsl(222 12% 70% / 0.25);
+	--shadow-footer-b: inset -2px -2px 5px hsl(222 15% 100% / 0.7);
+
+	--shadow-bubble-bot-a: inset 3px 3px 6px hsl(145 30% 35% / 0.12);
+	--shadow-bubble-bot-b: inset -3px -3px 6px hsl(145 30% 55% / 0.08);
+	--shadow-bubble-user-a: inset 3px 3px 6px hsl(222 12% 70% / 0.3);
+	--shadow-bubble-user-b: inset -3px -3px 6px hsl(222 15% 100% / 0.6);
+
+	--shadow-row-hover-a: inset 2px 2px 5px hsl(222 12% 72% / 0.25);
+	--shadow-row-hover-b: inset -2px -2px 5px hsl(222 15% 100% / 0.5);
+
+	--shadow-bar: 6px 6px 18px hsl(222 12% 68% / 0.45), -4px -4px 12px hsl(222 15% 98% / 0.8);
+}
+
+@theme {
+	--color-*: initial;
+	--color-bg: var(--color-bg);
+	--color-panel: var(--color-panel);
+	--color-panel2: var(--color-panel2);
+	--color-line: var(--color-line);
+	--color-ink: var(--color-ink);
+	--color-muted: var(--color-muted);
+	--color-phos: var(--color-phos);
+	--color-phos-dim: var(--color-phos-dim);
+	--color-amber: var(--color-amber);
+	--color-danger: var(--color-danger);
+	--font-sans: 'Bricolage Grotesque', system-ui, sans-serif;
+	--font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/* ── Global ──────────────────────────────────────────────────────────────── */
+
+body {
+	background: var(--color-bg);
+	min-height: 100vh;
+	font-family: var(--font-sans);
+	color: var(--color-ink);
+	transition: background 0.3s ease, color 0.3s ease;
+}
+
+::selection {
+	background: var(--color-phos);
+	color: #fff;
+}
+
+/* ── Scrollbar (webkits) ─────────────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+	background: var(--color-line);
+	border-radius: 999px;
+}
+
+/* ── Component layer ─────────────────────────────────────────────────────── */
+
+@layer components {
+	/* ── Card ─────────────────────────────────────────────────────────── */
+
+	.card {
+		background: var(--color-panel);
+		border-radius: 1.25rem;
+		border: 1px solid transparent;
+		box-shadow: var(--shadow-card-a), var(--shadow-card-b);
+		transition: box-shadow 0.25s ease, border-color 0.2s ease, background 0.3s ease;
+	}
+	.card:hover {
+		box-shadow: var(--shadow-card-hover-a), var(--shadow-card-hover-b);
+	}
+
+	/* ── Label ────────────────────────────────────────────────────────── */
+
+	.label {
+		display: block;
+		font-family: var(--font-mono);
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.14em;
+		color: var(--color-muted);
+		margin-bottom: 0.375rem;
+	}
+
+	/* ── Input / textarea / select (sunken) ───────────────────────────── */
+
+	.input {
+		width: 100%;
+		border-radius: 0.875rem;
+		background: var(--color-bg);
+		padding: 0.5rem 0.75rem;
+		font-size: 0.875rem;
+		line-height: 1.5;
+		color: var(--color-ink);
+		border: none;
+		outline: none;
+		box-shadow: var(--shadow-inset-a), var(--shadow-inset-b);
+		transition: box-shadow 0.2s ease, background 0.3s ease, color 0.3s ease;
+	}
+	.input::placeholder {
+		color: var(--color-muted);
+		opacity: 0.45;
+	}
+	.input:focus {
+		box-shadow:
+			var(--shadow-inset-a), var(--shadow-inset-b),
+			0 0 0 2px var(--color-phos-dim);
+	}
+
+	textarea.input { padding: 0.625rem 0.75rem; }
+
+	select.input {
+		cursor: pointer;
+		appearance: none;
+		background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%237f8596' stroke-width='1.5'%3e%3cpath d='m3 5 3 3 3-3'/%3e%3c/svg%3e");
+		background-repeat: no-repeat;
+		background-position: right 0.75rem center;
+		padding-right: 2.25rem;
+	}
+
+	/* ── Buttons ──────────────────────────────────────────────────────── */
+
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		cursor: pointer;
+		border-radius: 0.875rem;
+		background: var(--color-phos);
+		padding: 0.5rem 1.125rem;
+		font-family: var(--font-mono);
+		font-size: 13px;
+		font-weight: 600;
+		color: #fff;
+		border: none;
+		box-shadow: var(--shadow-btn-a), var(--shadow-btn-b);
+		transition: all 0.15s ease;
+	}
+	.btn:hover {
+		box-shadow: var(--shadow-card-hover-a), var(--shadow-card-hover-b);
+		filter: brightness(1.06);
+	}
+	.btn:active {
+		box-shadow: var(--shadow-btn-active-a), var(--shadow-btn-active-b);
+		transform: scale(0.985);
+	}
+	.btn:disabled {
+		opacity: 0.4;
+		cursor: default;
+		transform: none;
+	}
+
+	/* Ghost (secondary) button */
+	.btn-ghost {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		cursor: pointer;
+		border-radius: 0.875rem;
+		background: var(--color-panel);
+		padding: 0.5rem 1.125rem;
+		font-family: var(--font-mono);
+		font-size: 13px;
+		color: var(--color-muted);
+		border: none;
+		box-shadow: var(--shadow-ghost-a), var(--shadow-ghost-b);
+		transition: all 0.15s ease, background 0.3s ease;
+	}
+	.btn-ghost:hover {
+		box-shadow: var(--shadow-card-hover-a), var(--shadow-card-hover-b);
+		color: var(--color-ink);
+	}
+	.btn-ghost:active {
+		box-shadow: var(--shadow-ghost-active-a), var(--shadow-ghost-active-b);
+		transform: scale(0.985);
+	}
+
+	/* Danger button */
+	.btn-danger {
+		display: inline-flex;
+		align-items: center;
+		cursor: pointer;
+		border-radius: 0.75rem;
+		background: var(--color-panel);
+		padding: 0.375rem 0.75rem;
+		font-family: var(--font-mono);
+		font-size: 12px;
+		color: var(--color-danger);
+		border: none;
+		box-shadow: var(--shadow-danger-a), var(--shadow-danger-b);
+		transition: all 0.15s ease, background 0.3s ease;
+	}
+	.btn-danger:hover {
+		box-shadow: var(--shadow-card-hover-a), var(--shadow-card-hover-b);
+	}
+
+	/* ── Table elements ───────────────────────────────────────────────── */
+
+	.th {
+		padding: 0.625rem 1rem;
+		text-align: left;
+		font-family: var(--font-mono);
+		font-size: 11px;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.14em;
+		color: var(--color-muted);
+	}
+	.td {
+		border-top: 1px solid var(--color-line);
+		padding: 0.75rem 1rem;
+		font-size: 0.875rem;
+	}
+
+	/* ── Stat number ──────────────────────────────────────────────────── */
+
+	.stat-num {
+		font-family: var(--font-mono);
+		font-size: 1.875rem;
+		font-weight: 600;
+		color: var(--color-ink);
+	}
+
+	/* ── Flash messages (inset card look) ─────────────────────────────── */
+
+	.flash-success {
+		border-radius: 0.875rem;
+		padding: 0.5rem 1rem;
+		font-size: 0.875rem;
+		color: var(--color-phos);
+		box-shadow: var(--shadow-flash-success-a), var(--shadow-flash-success-b);
+	}
+	.flash-danger {
+		border-radius: 0.875rem;
+		padding: 0.5rem 1rem;
+		font-size: 0.875rem;
+		color: var(--color-danger);
+		box-shadow: var(--shadow-flash-danger-a), var(--shadow-flash-danger-b);
+	}
+
+	/* ── Pills / badges ───────────────────────────────────────────────── */
+
+	.pill {
+		display: inline-block;
+		border-radius: 999px;
+		padding: 0.125rem 0.625rem;
+		font-family: var(--font-mono);
+		font-size: 10px;
+		color: var(--color-muted);
+		box-shadow: var(--shadow-pill-a), var(--shadow-pill-b);
+		transition: box-shadow 0.3s ease;
+	}
+
+	/* ── Filter toggle tabs ───────────────────────────────────────────── */
+
+	.tab-pill {
+		border-radius: 999px;
+		padding: 0.375rem 1rem;
+		font-family: var(--font-mono);
+		font-size: 13px;
+		transition: all 0.15s ease;
+		box-shadow: none;
+		color: var(--color-muted);
+	}
+	.tab-pill-active {
+		color: var(--color-phos);
+		box-shadow: var(--shadow-tab-active-a), var(--shadow-tab-active-b);
+	}
+	.tab-pill-inactive:hover {
+		color: var(--color-ink);
+	}
+
+	/* ── Section heading ──────────────────────────────────────────────── */
+
+	.section-h {
+		font-family: var(--font-mono);
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.2em;
+		color: var(--color-phos);
+		margin-bottom: 1rem;
+	}
+
+	/* ── Objection row (sunken card) ──────────────────────────────────── */
+
+	.objection-row {
+		border-radius: 1rem;
+		padding: 1rem;
+		background: var(--color-panel);
+		box-shadow: var(--shadow-obj-a), var(--shadow-obj-b);
+		transition: box-shadow 0.3s ease, background 0.3s ease;
+	}
+
+	/* ── Checkbox day toggle ──────────────────────────────────────────── */
+
+	.day-chip {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		border-radius: 0.75rem;
+		padding: 0.375rem 0.625rem;
+		font-family: var(--font-mono);
+		font-size: 12px;
+		color: var(--color-muted);
+		box-shadow: var(--shadow-day-a), var(--shadow-day-b);
+		transition: all 0.15s ease, background 0.3s ease;
+	}
+	.day-chip:has(input:checked) {
+		color: var(--color-phos);
+		box-shadow: var(--shadow-day-checked-a), var(--shadow-day-checked-b);
+	}
+
+	/* ── Chat bubble ──────────────────────────────────────────────────── */
+
+	.bubble-bot {
+		border-radius: 1.125rem 1.125rem 1.125rem 0.375rem;
+		padding: 0.625rem 1rem;
+		box-shadow: var(--shadow-bubble-bot-a), var(--shadow-bubble-bot-b);
+		transition: box-shadow 0.3s ease;
+	}
+	.bubble-user {
+		border-radius: 1.125rem 1.125rem 0.375rem 1.125rem;
+		padding: 0.625rem 1rem;
+		box-shadow: var(--shadow-bubble-user-a), var(--shadow-bubble-user-b);
+		transition: box-shadow 0.3s ease;
+	}
+
+	/* ── Sticky bottom bar ────────────────────────────────────────────── */
+
+	.sticky-bar {
+		position: sticky;
+		bottom: 1rem;
+		display: flex;
+		justify-content: flex-end;
+		z-index: 10;
+	}
+
+	/* ── Hover highlight row ──────────────────────────────────────────── */
+
+	.row-hover:hover {
+		box-shadow: var(--shadow-row-hover-a), var(--shadow-row-hover-b);
+	}
+
+	/* ── Separator ────────────────────────────────────────────────────── */
+
+	.sep-y {
+		border-top: 1px solid var(--color-line);
+	}
+
+	/* ── Theme toggle ─────────────────────────────────────────────────── */
+
+	.theme-toggle {
+		cursor: pointer;
+		background: none;
+		border: none;
+		border-radius: 0.75rem;
+		padding: 0.375rem;
+		font-size: 16px;
+		line-height: 1;
+		color: var(--color-muted);
+		box-shadow: var(--shadow-day-a), var(--shadow-day-b);
+		transition: all 0.15s ease, background 0.3s ease;
+	}
+	.theme-toggle:hover {
+		color: var(--color-ink);
+		box-shadow: var(--shadow-card-hover-a), var(--shadow-card-hover-b);
+	}
+	.theme-toggle:active {
+		box-shadow: var(--shadow-day-checked-a), var(--shadow-day-checked-b);
+		transform: scale(0.95);
+	}
+
+	/* ── Skeleton loading placeholders ────────────────────────────────── */
+
+	.skeleton {
+		background: var(--color-line);
+		border-radius: 0.5rem;
+		animation: skeleton-shimmer 1.6s ease-in-out infinite;
+	}
+	.skeleton-text  { height: 0.875rem; }
+	.skeleton-title { height: 1.25rem; width: 60%; }
+	.skeleton-card  { height: 6rem; }
+	.skeleton-row   { height: 2.5rem; }
+	.skeleton-chart { height: 10rem; }
+}
+
+/* ── Live pulse indicator ────────────────────────────────────────────────── */
+
+.pulse-dot {
+	position: relative;
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 999px;
+	background: var(--color-phos);
+}
+.pulse-dot::after {
+	content: '';
+	position: absolute;
+	inset: -5px;
+	border-radius: 999px;
+	border: 1px solid var(--color-phos);
+	animation: ring 1.8s ease-out infinite;
+}
+@keyframes ring {
+	from { transform: scale(0.4); opacity: 0.8; }
+	to   { transform: scale(1.4); opacity: 0; }
+}
+
+@keyframes skeleton-shimmer {
+	0%   { opacity: 0.35; }
+	50%  { opacity: 0.65; }
+	100% { opacity: 0.35; }
+}

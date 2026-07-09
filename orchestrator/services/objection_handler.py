@@ -71,7 +71,9 @@ async def handle_objection(
     if entry is None:
         strike_count = sum(call_state.objection_strikes.values()) or 1
         fallback_idx = min(strike_count - 1, len(_GENERIC_FALLBACK_RESPONSES) - 1)
-        chunks = await retrieve(message or objection_id, pack.name)
+        chunks = await retrieve(
+            message or objection_id, pack.name, agent_id=call_state.agent_id
+        )
         return ObjectionContext(
             objection_id=objection_id,
             label="General objection",
@@ -84,7 +86,7 @@ async def handle_objection(
     strike_count = call_state.objection_strikes.get(entry.id, 1)
     # Query: combine the objection label with the prospect's message for richer retrieval
     query = f"{entry.label}: {message}" if message else entry.label
-    chunks = await retrieve(query, pack.name)
+    chunks = await retrieve(query, pack.name, agent_id=call_state.agent_id)
     return ObjectionContext(
         objection_id=entry.id,
         label=entry.label,
