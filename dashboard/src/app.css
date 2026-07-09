@@ -498,6 +498,19 @@ body {
 		box-shadow: var(--shadow-day-checked-a), var(--shadow-day-checked-b);
 		transform: scale(0.95);
 	}
+
+	/* ── Skeleton loading placeholders ────────────────────────────────── */
+
+	.skeleton {
+		background: var(--color-line);
+		border-radius: 0.5rem;
+		animation: skeleton-shimmer 1.6s ease-in-out infinite;
+	}
+	.skeleton-text  { height: 0.875rem; }
+	.skeleton-title { height: 1.25rem; width: 60%; }
+	.skeleton-card  { height: 6rem; }
+	.skeleton-row   { height: 2.5rem; }
+	.skeleton-chart { height: 10rem; }
 }
 
 /* ── Live pulse indicator ────────────────────────────────────────────────── */
@@ -521,4 +534,10 @@ body {
 @keyframes ring {
 	from { transform: scale(0.4); opacity: 0.8; }
 	to   { transform: scale(1.4); opacity: 0; }
+}
+
+@keyframes skeleton-shimmer {
+	0%   { opacity: 0.35; }
+	50%  { opacity: 0.65; }
+	100% { opacity: 0.35; }
 }

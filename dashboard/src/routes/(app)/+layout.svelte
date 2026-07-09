@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { navigating } from '$app/stores';
 
 	let { data, children } = $props();
 
-	const nav = [
+	const navItems = [
 		{ href: '/dashboard', label: 'Overview' },
 		{ href: '/agents', label: 'Agents' },
 		{ href: '/packs', label: 'Packs' },
@@ -26,6 +27,9 @@
 </script>
 
 <div class="flex min-h-screen">
+	<!-- top loading bar ──────────────────────────────────────────────── -->
+	<div class="nav-progress" class:nav-progress-active={Boolean($navigating)}></div>
+
 	<aside class="flex w-56 shrink-0 flex-col bg-panel transition-colors duration-300"
 		style="box-shadow: var(--shadow-sidebar);"
 	>
@@ -34,9 +38,10 @@
 			<div class="mt-1 text-lg font-bold tracking-tight">Coldline</div>
 		</div>
 		<nav class="flex-1 space-y-1 px-3 py-4">
-			{#each nav as item (item.href)}
+			{#each navItems as item (item.href)}
 				<a
 					href={item.href}
+					data-sveltekit-preload-data="hover"
 					class="block rounded-xl px-3 py-2 font-mono text-[13px] transition-all duration-200
 						{active(item.href)
 							? 'text-phos'
@@ -75,3 +80,24 @@
 		{@render children()}
 	</main>
 </div>
+
+<style>
+	.nav-progress {
+		position: fixed;
+		top: 0;
+		left: 0;
+		height: 2.5px;
+		z-index: 9999;
+		width: 0;
+		background: var(--color-phos);
+		border-radius: 0 1px 1px 0;
+		pointer-events: none;
+		transition: width 80ms ease-out;
+		opacity: 0;
+	}
+	.nav-progress-active {
+		opacity: 1;
+		width: 60%;
+		transition: width 4s cubic-bezier(0.1, 0.7, 0.3, 1);
+	}
+</style>
