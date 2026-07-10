@@ -335,7 +335,9 @@ async def vapi_server(payload: dict[str, Any]) -> dict[str, Any]:
     # calendar event, and the re-save must not null out the stored reference
     # (the freshly extracted appt carries no calendar fields).
     existing = await get_calendar_ref(call_id)
-    if existing is not None and existing.event_id:
+    # Key on provider, not event_id: a prior 2xx booking whose id we couldn't
+    # parse still set the provider, and re-running would create a second invite.
+    if existing is not None and existing.provider:
         appt = appt.model_copy(update={
             "end_time": existing.end_time,
             "calendar_provider": existing.provider,

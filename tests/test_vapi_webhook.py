@@ -87,6 +87,25 @@ async def test_webhook_reuses_existing_event_and_skips_booking():
 
 
 @pytest.mark.asyncio
+async def test_webhook_reuses_when_provider_set_but_id_missing():
+    """A prior 2xx booking recorded the provider but no id → still skip re-booking."""
+    existing = CalendarRef(
+        provider="cal_com", event_id="", event_url=None, end_time=None
+    )
+    with (
+        patch.object(vapi, "load_pack", return_value=_pack()),
+        patch.object(vapi, "extract_appointment", AsyncMock(return_value=_extracted())),
+        patch.object(vapi, "get_calendar_ref", AsyncMock(return_value=existing)),
+        patch.object(vapi, "book_appointment", AsyncMock()) as book,
+        patch.object(vapi, "save_appointment", AsyncMock()) as save,
+    ):
+        await vapi.vapi_server(_PAYLOAD)
+
+    book.assert_not_called()
+    assert save.call_args.args[0].calendar_provider == "cal_com"
+
+
+@pytest.mark.asyncio
 async def test_webhook_books_when_existing_row_has_no_event():
     """A row exists (e.g. prior DB-only save) but no invite yet → still books."""
     existing = CalendarRef(

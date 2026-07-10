@@ -61,7 +61,7 @@ class CalendarConfig(BaseModel):
     provider: Literal["none", "cal_com", "google"] = "none"
     event_type_id: int | None = None  # Cal.com: the event type to book against
     calendar_id: str | None = None  # Google: the calendar to write the event to
-    duration_minutes: int = 15
+    duration_minutes: int = Field(default=15, gt=0)  # zero/negative → invalid slot
 
 
 class IndustryPack(BaseModel):

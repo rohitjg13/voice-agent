@@ -61,6 +61,18 @@ async def book_appointment(pack: IndustryPack, appt: Appointment) -> Appointment
     ):
         return appt
 
+    # Don't create events in the past. The extractor can misresolve a relative
+    # day ("Thursday") to a date that's already gone; Cal.com rejects past slots
+    # but Google would happily create one. The [start, end] window is still
+    # persisted above for the record.
+    if start < datetime.now(start.tzinfo):
+        logger.warning(
+            "calendar_skipped_past_time",
+            call_id=appt.call_id,
+            start=start.isoformat(),
+        )
+        return appt
+
     end = start + timedelta(minutes=cfg.duration_minutes)
     tz = pack.scheduling.timezone
 

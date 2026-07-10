@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
 
@@ -9,6 +9,9 @@ from orchestrator.services import calendar as cal
 from packs._schema.pack import CalendarConfig, IndustryPack
 
 TZ = ZoneInfo("Asia/Kolkata")
+# Relative to wall-clock so the past-time guard doesn't silently flip these
+# tests as the calendar advances. START is comfortably in the future.
+START = (datetime.now(TZ) + timedelta(days=2)).replace(microsecond=0)
 
 
 def _pack(provider: str, **cal_kwargs) -> IndustryPack:
@@ -32,7 +35,7 @@ def _appt(**overrides) -> Appointment:
         booked=True,
         prospect_name="Jane",
         prospect_email="jane@dental.com",
-        start_time=datetime(2026, 7, 9, 14, 0, tzinfo=TZ),
+        start_time=START,
     )
     base.update(overrides)
     return Appointment(**base)
@@ -82,7 +85,7 @@ async def test_book_creates_no_invite(provider, appt_kwargs):
 async def test_end_time_derived_without_invite(provider, appt_kwargs):
     pack = _pack(provider, event_type_id=1, duration_minutes=45)
     out = await cal.book_appointment(pack, _appt(**appt_kwargs))
-    assert out.end_time == datetime(2026, 7, 9, 14, 45, tzinfo=TZ)
+    assert out.end_time == START + timedelta(minutes=45)
     assert out.calendar_event_id is None
 
 
@@ -91,6 +94,21 @@ async def test_no_end_time_without_start():
     pack = _pack("cal_com", event_type_id=1)
     out = await cal.book_appointment(pack, _appt(start_time=None))
     assert out.end_time is None
+
+
+@pytest.mark.asyncio
+async def test_past_start_time_creates_no_invite(monkeypatch):
+    """A resolved time in the past must not create a real event (Google would)."""
+    monkeypatch.setattr(cal.settings, "calcom_api_key", "cal_live_x")
+    past = datetime.now(TZ) - timedelta(days=1)
+    pack = _pack("cal_com", event_type_id=42, duration_minutes=30)
+    client = _mock_client(_http_response(200, {"id": 1, "uid": "x"}))
+    with patch.object(cal, "shared_async_http_client", return_value=client):
+        out = await cal.book_appointment(pack, _appt(start_time=past))
+    client.post.assert_not_called()
+    assert out.calendar_event_id is None
+    # The slot window is still recorded even though no invite was sent.
+    assert out.end_time == past + timedelta(minutes=30)
 
 
 # ── Cal.com ──────────────────────────────────────────────────────────────────
@@ -109,7 +127,7 @@ async def test_calcom_success(monkeypatch):
     assert out.calendar_provider == "cal_com"
     assert out.calendar_event_id == "999"
     assert out.calendar_event_url == "https://cal.com/booking/abc123"
-    assert out.end_time == datetime(2026, 7, 9, 14, 15, tzinfo=TZ)
+    assert out.end_time == START + timedelta(minutes=15)
 
     body = client.post.call_args.kwargs["json"]
     assert body["eventTypeId"] == 42
@@ -126,6 +144,21 @@ async def test_calcom_wrapped_booking(monkeypatch):
         out = await cal.book_appointment(pack, _appt())
     assert out.calendar_event_id == "7"
     assert out.calendar_event_url == "https://cal.com/booking/wrapped"
+
+
+@pytest.mark.asyncio
+async def test_calcom_2xx_without_id_still_records_provider(monkeypatch):
+    """A 2xx booking with an unparseable body: we can't capture an id, but the
+    invite was created — record the provider so a redelivery won't double-book.
+    """
+    monkeypatch.setattr(cal.settings, "calcom_api_key", "cal_live_x")
+    pack = _pack("cal_com", event_type_id=42)
+    resp = _http_response(200, {})  # no id, no uid
+    with patch.object(cal, "shared_async_http_client", return_value=_mock_client(resp)):
+        out = await cal.book_appointment(pack, _appt())
+    assert out.calendar_provider == "cal_com"
+    assert out.calendar_event_id == ""
+    assert out.calendar_event_url is None
 
 
 @pytest.mark.asyncio
@@ -191,7 +224,7 @@ async def test_google_success(monkeypatch):
     assert out.calendar_provider == "google"
     assert out.calendar_event_id == "evt_1"
     assert out.calendar_event_url == "https://cal.google/evt_1"
-    assert out.end_time == datetime(2026, 7, 9, 14, 30, tzinfo=TZ)
+    assert out.end_time == START + timedelta(minutes=30)
 
     assert client.post.call_args.kwargs["headers"]["Authorization"] == "Bearer tok"
     body = client.post.call_args.kwargs["json"]
