@@ -101,3 +101,12 @@ def test_defaults():
     assert pack.stages.discovery_questions == []
     assert pack.agent.voice_id == ""
     assert pack.product.key_benefits == []
+    # Calendar is off by default; the pack stays DB-only until wired.
+    assert pack.calendar.provider == "none"
+    assert pack.calendar.duration_minutes == 15
+
+
+def test_calendar_duration_must_be_positive():
+    for bad in (0, -30):
+        with pytest.raises(ValidationError):
+            IndustryPack(**MINIMAL_VALID, calendar={"duration_minutes": bad})

@@ -55,7 +55,8 @@ A cold-calling AI agent where **industries are swappable YAML configs**, not cod
    │                                                          │
    │  POST /vapi/server (call ended)                          │
    │  ─────────────────────────────                           │
-   │   • Haiku extracts {booked, time, email, name}           │
+   │   • Haiku extracts {booked, time→ISO, email, name}       │
+   │   • Book real invite (Cal.com / Google, per-pack)        │
    │   • UPSERT into appointments table                       │
    │                                                          │
    └────┬──────────────────────────────────┬──────────────────┘
@@ -129,6 +130,7 @@ cp .env.example .env
 # One-time: run migrations in Supabase SQL editor
 #   infra/migrations/001_knowledge_chunks.sql
 #   infra/migrations/002_appointments.sql
+#   infra/migrations/003_calendar.sql
 
 # One-time: ingest the dental pack's knowledge into pgvector
 .venv/bin/python -m orchestrator.services.ingest dental_saas
@@ -279,7 +281,7 @@ voice-agent-platform/
 
 ## Known limitations / next steps
 
-- **No real calendar invite is sent.** The appointment is captured into a Supabase row; integrating Cal.com / Google Calendar is a 1-hour follow-up.
+- **Real calendar invites** are created for booked demos via **Cal.com or Google Calendar**, chosen per-pack (`calendar.provider` in the pack YAML). The post-call extractor resolves the spoken time to an ISO instant; `orchestrator/services/calendar.py` books it and writes the event id/URL back onto the appointment row. Best-effort: a calendar outage still saves the row, it just skips the invite. Set `CALCOM_API_KEY` or `GOOGLE_CALENDAR_CREDENTIALS_JSON`; packs left at `provider: none` stay DB-only. Google attendee invites need the target calendar shared with the service account (domain-wide delegation for external invitees).
 - **Webhook auth is shared-secret only.** Set `VAPI_LLM_SECRET` and `VAPI_SERVER_SECRET`; the backend rejects requests without `Authorization: Bearer <secret>` (Custom LLM) and `x-vapi-secret: <secret>` (server webhook), using constant-time comparison. Production might want signed JWTs or mTLS instead.
 - **DNC list is hardcoded.** Real deployment should integrate the FTC DNC registry or an internal suppression list.
 - **No call recording transcription pipeline.** Vapi stores recordings; we don't pull them into our own warehouse for analytics yet.
